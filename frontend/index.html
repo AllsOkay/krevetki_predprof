@@ -3,45 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokémon AI Search</title>
+    <title>Pokémon AI - Neural Network Lab</title>
     <link rel="stylesheet" href="css.css">
 </head>
 <body>
     <div class="container">
-        <h1>🧠 Pokémon AI Similarity</h1>
+        <header>
+            <h1>🧠 Pokémon AI Lab</h1>
+            <p class="subtitle">Машинное обучение на данных о покемонах</p>
+        </header>
         
-        <div class="controls">
-            <button id="add-all-btn">➕ Добавить всех покемонов</button>
-            <button id="train-btn" class="secondary">🎓 Обучить нейросеть</button>
-            <button id="clear-btn" class="danger">🗑️ Очистить всё</button>
-        </div>
-
-        <div class="search-section">
-            <h2>🔍 Найти похожих</h2>
+        <!-- Панель управления данными -->
+        <section class="panel data-panel">
+            <h2>📊 Данные</h2>
+            <div class="controls">
+                <button id="add-all-btn" class="btn-primary">➕ Добавить всех покемонов</button>
+                <button id="clear-btn" class="btn-danger">🗑️ Очистить БД</button>
+                <span class="db-count">В БД: <strong id="count-db">0</strong> покемонов</span>
+            </div>
+            
+            <div class="progress-container hidden" id="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <span id="progress-text">Загрузка...</span>
+            </div>
+        </section>
+        
+        <!-- Панель обучения моделей -->
+        <section class="panel models-panel">
+            <h2>🎓 Обучение моделей</h2>
+            <div class="model-cards">
+                <div class="model-card">
+                    <h3>MLP</h3>
+                    <p>Классификация типов</p>
+                    <button id="train-mlp-btn" class="btn-train">🎓 Обучить</button>
+                    <button id="predict-mlp-btn" class="btn-predict" disabled>🔮 Предсказать</button>
+                </div>
+                <div class="model-card">
+                    <h3>CNN</h3>
+                    <p>Классификация через "изображение"</p>
+                    <button id="train-cnn-btn" class="btn-train">🎓 Обучить</button>
+                    <button id="predict-cnn-btn" class="btn-predict" disabled>🔮 Предсказать</button>
+                </div>
+                <div class="model-card">
+                    <h3>RNN</h3>
+                    <p>Прогноз последовательностей</p>
+                    <button id="train-rnn-btn" class="btn-train">🎓 Обучить</button>
+                    <button id="predict-rnn-btn" class="btn-predict" disabled>🔮 Предсказать</button>
+                </div>
+                <div class="model-card featured">
+                    <h3>Autoencoder</h3>
+                    <p>Сжатие и поиск похожих</p>
+                    <button id="train-autoencoder-btn" class="btn-train">🎓 Обучить</button>
+                    <button id="predict-autoencoder-btn" class="btn-predict" disabled>🔮 Проверить аномалию</button>
+                </div>
+                <div class="model-card">
+                    <h3>Siamese</h3>
+                    <p>Сравнение пар покемонов</p>
+                    <button id="train-siamese-btn" class="btn-train">🎓 Обучить</button>
+                    <button id="predict-siamese-btn" class="btn-predict" disabled>🔮 Сравнить</button>
+                </div>
+            </div>
+            
+            <!-- График потерь -->
+            <div class="chart-container">
+                <h4>📈 График обучения</h4>
+                <canvas id="loss-chart" width="600" height="200"></canvas>
+            </div>
+        </section>
+        
+        <!-- Панель предсказаний -->
+        <section class="panel predict-panel">
+            <h2>🔮 Предсказание</h2>
+            <div class="predict-inputs">
+                <div class="input-group">
+                    <label>Имя покемона:</label>
+                    <input type="text" id="pokemon-input" placeholder="pikachu, charizard..." list="pokemon-list">
+                    <datalist id="pokemon-list"></datalist>
+                </div>
+                <div class="input-group hidden" id="reference-group">
+                    <label>Эталонный покемон (для Siamese):</label>
+                    <input type="text" id="reference-input" placeholder="pikachu">
+                </div>
+            </div>
+            <div id="predict-results" class="results-box hidden"></div>
+        </section>
+        
+        <!-- Панель поиска похожих -->
+        <section class="panel similar-panel">
+            <h2>🔍 Найти похожих (Autoencoder)</h2>
             <div class="search-box">
-                <input type="text" id="similar-input" placeholder="Имя покемона (напр. pikachu)">
-                <button id="find-similar-btn">Найти</button>
+                <input type="text" id="similar-input" placeholder="Введите имя покемона">
+                <button id="find-similar-btn" class="btn-search">Найти</button>
             </div>
             <div id="similar-results" class="results-grid hidden"></div>
-        </div>
+        </section>
         
-        <div class="progress-container hidden" id="progress-container">
-            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-            <span id="progress-text">Загрузка...</span>
-        </div>
+        <!-- Статус моделей -->
+        <section class="panel status-panel">
+            <h2>📊 Статус</h2>
+            <div id="model-status" class="status-box">
+                <em>Модели не загружены. Обучите модель для начала работы.</em>
+            </div>
+        </section>
         
-        <div class="table-container">
-            <h3>📊 База данных (<span id="count-db">0</span>)</h3>
-            <table id="pokemon-table">
-                <thead>
-                    <tr>
-                        <th>id</th><th>name</th><th>types</th><th>hp</th><th>atk</th><th>def</th><th>speed</th>
-                    </tr>
-                </thead>
-                <tbody id="pokemon-table-body"></tbody>
-            </table>
-        </div>
+        <!-- Таблица покемонов -->
+        <section class="panel table-panel">
+            <h2>📋 Покемоны в базе</h2>
+            <div class="table-container">
+                <table id="pokemon-table">
+                    <thead>
+                        <tr>
+                            <th>id</th>
+                            <th>name</th>
+                            <th>types</th>
+                            <th>hp</th>
+                            <th>atk</th>
+                            <th>def</th>
+                            <th>speed</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pokemon-table-body">
+                        <!-- Данные добавляются динамически -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
     </div>
+    
     <script src="script.js"></script>
 </body>
 </html>

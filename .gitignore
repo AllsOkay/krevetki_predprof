@@ -1,14 +1,22 @@
-__pycache__/
-*.pyc
+pokemon.db
+model.pth
+scaler.pkl
 
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+venv/
+env/
 .venv/
-.env
+ENV/
 
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-.DS_Store
-
-.pkl
-.db
-.pth
+*.log
+.tmp/

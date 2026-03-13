@@ -1,117 +1,153 @@
 """
-RNN/LSTM для прогнозирования характеристик покемонов.
+Архитектура рекуррентной нейросети (LSTM) для классификации силы покемонов.
 
-Применение:
-- Предсказание характеристик эволюционировавшего покемона 
-  на основе последовательности предыдущих форм
-- Прогноз "боевого потенциала" на основе истории поколений
+Эта сеть анализирует последовательность из 6 основных характеристик:
+HP → Attack → Defense → Sp.Atk → Sp.Def → Speed
 
-Архитектура:
-Последовательность векторов → LSTM(32) → LSTM(16) → Dense → Выход
+LSTM хорошо подходит для таких задач, потому что:
+1. Учитывает порядок характеристик (важно для определения роли)
+2. Запоминает долгосрочные зависимости между статами
+3. Может выявить паттерны (например, высокий Sp.Atk при низком Defense)
 
-Почему это работает:
-Если упорядочить покемонов по эволюционным цепочкам или по поколениям,
-рекуррентная сеть может выявить паттерны роста характеристик.
+Вход: Последовательность из 6 нормализованных характеристик
+Выход: Вероятности для 3 классов (слабый, средний, сильный)
 """
-
 import torch
 import torch.nn as nn
 
 
-class PokemonRNN(nn.Module):
+class PokemonRNNClassifier(nn.Module):
     """
-    LSTM-сеть для работы с последовательностями данных о покемонах.
+    LSTM-сеть для классификации силы покемонов.
     
-    Args:
-        input_dim: Размерность одного шага последовательности (26 признаков)
-        hidden_dim: Размер скрытого состояния LSTM
-        num_layers: Количество слоёв LSTM
-        output_dim: Размер выхода (для регрессии или классификации)
-        task: 'regression' или 'classification'
+    Архитектура:
+    1. LSTM слой для обработки последовательности статов
+    2. Полносвязные слои для классификации
+    3. Dropout для регуляризации
     """
     
-    def __init__(
-        self,
-        input_dim: int = 26,
-        hidden_dim: int = 32,
-        num_layers: int = 2,
-        output_dim: int = 1,
-        task: str = 'regression',
-        dropout: float = 0.2
-    ):
-        super(PokemonRNN, self).__init__()
+    def __init__(self, input_size: int = 1, hidden_size: int = 32, 
+                 num_layers: int = 2, num_classes: int = 3, dropout: float = 0.3):
+        """
+        Инициализация архитектуры сети.
         
-        self.task = task
-        self.hidden_dim = hidden_dim
+        Args:
+            input_size: Размерность входа на каждом шаге (1 для одного стата)
+            hidden_size: Размерность скрытого состояния LSTM
+            num_layers: Количество LSTM слоёв
+            num_classes: Количество классов (3: weak, medium, strong)
+            dropout: Коэффициент Dropout для регуляризации
+        """
+        super(PokemonRNNClassifier, self).__init__()
+        
+        self.hidden_size = hidden_size
         self.num_layers = num_layers
         
-        # LSTM слой
+        # ==================== LSTM Слой ====================
+        # Обрабатывает последовательность из 6 характеристик
         self.lstm = nn.LSTM(
-            input_size=input_dim,
-            hidden_size=hidden_dim,
+            input_size=input_size,
+            hidden_size=hidden_size,
             num_layers=num_layers,
-            batch_first=True,  # Вход: (batch, seq_len, features)
+            batch_first=True,  # Вход: [batch, seq_len, features]
             dropout=dropout if num_layers > 1 else 0,
-            bidirectional=False
+            bidirectional=True  # Двунаправленный LSTM для лучшего контекста
         )
         
-        # Полносвязные слои после LSTM
-        self.fc = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim // 2),
+        # ==================== Полносвязные слои ====================
+        # После LSTM: hidden_size * 2 (bidirectional)
+        self.fc1 = nn.Sequential(
+            nn.Linear(hidden_size * 2, 64),  # *2 для bidirectional
             nn.ReLU(),
-            nn.Linear(hidden_dim // 2, output_dim)
+            nn.Dropout(dropout)
         )
         
-        if task == 'classification' and output_dim > 1:
-            self.fc.add_module('softmax', nn.Softmax(dim=1))
-            
+        self.fc2 = nn.Sequential(
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Dropout(dropout)
+        )
+        
+        # Выходной слой: 3 класса (weak, medium, strong)
+        self.output = nn.Linear(32, num_classes)
+        
+        # Инициализация весов
+        self._initialize_weights()
+    
+    def _initialize_weights(self):
+        """Инициализация весов для стабильности обучения."""
+        for name, param in self.named_parameters():
+            if 'weight_ih' in name:
+                nn.init.xavier_uniform_(param.data)
+            elif 'weight_hh' in name:
+                nn.init.orthogonal_(param.data)
+            elif 'bias' in name:
+                param.data.fill_(0)
+            elif 'weight' in name and len(param.shape) > 1:
+                nn.init.kaiming_normal_(param.data, mode='fan_out', nonlinearity='relu')
+    
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
-        Прямой проход через LSTM.
+        Прямой проход через сеть.
         
         Args:
-            x: Тензор формы (batch, seq_len, input_dim)
-            
+            x: Тензор последовательности размера [batch_size, seq_len=6, input_size=1]
+               Пример: [[[HP], [Attack], [Defense], [Sp.Atk], [Sp.Def], [Speed]]]
+        
         Returns:
-            torch.Tensor: предсказания
+            torch.Tensor: Логиты для 3 классов размера [batch_size, num_classes]
         """
-        # LSTM возвращает: (all_hidden, (h_n, c_n))
-        # Нам нужно только последнее скрытое состояние: h_n[-1]
+        # ==================== LSTM Обработка ====================
+        # x: [batch, 6, 1]
         lstm_out, (h_n, c_n) = self.lstm(x)
+        # lstm_out: [batch, 6, hidden*2]
+        # h_n: [num_layers*2, batch, hidden]
         
-        # Берём выход последнего временного шага
-        last_hidden = h_n[-1]  # (batch, hidden_dim)
+        # ==================== Объединяем скрытые состояния ====================
+        # Берём последнее скрытое состояние из обоих направлений
+        # h_n: [num_layers*2, batch, hidden] -> берём последние 2 слоя
+        h_forward = h_n[-2, :, :]  # Последнее состояние прямого направления
+        h_backward = h_n[-1, :, :]  # Последнее состояние обратного направления
         
-        return self.fc(last_hidden)
+        # Конкатенируем направления
+        hidden_concat = torch.cat((h_forward, h_backward), dim=1)
+        # hidden_concat: [batch, hidden*2]
+        
+        # ==================== Полносвязные слои ====================
+        x = self.fc1(hidden_concat)  # [batch, 64]
+        x = self.fc2(x)              # [batch, 32]
+        
+        # ==================== Выходной слой ====================
+        logits = self.output(x)      # [batch, 3]
+        
+        return logits
     
-    def predict_sequence(self, x: torch.Tensor, steps: int = 1) -> torch.Tensor:
+    def predict(self, x: torch.Tensor) -> torch.Tensor:
         """
-        Итеративное предсказание последовательности.
-        
-        Используется для прогнозирования характеристик будущих эволюций.
+        Метод для инференса (без градиентов).
         
         Args:
-            x: Начальная последовательность (batch, seq_len, input_dim)
-            steps: Сколько шагов вперёд предсказать
-            
+            x: Тензор последовательности
+        
         Returns:
-            torch.Tensor: предсказанные следующие шаги
+            torch.Tensor: Индексы предсказанных классов
         """
-        self.eval()
-        predictions = []
-        
         with torch.no_grad():
-            current_seq = x.clone()
-            
-            for _ in range(steps):
-                # Предсказываем следующий шаг
-                next_pred = self.forward(current_seq)  # (batch, output_dim)
-                predictions.append(next_pred)
-                
-                # Добавляем предсказание в последовательность для следующего шага
-                # (упрощение: предполагаем output_dim == input_dim)
-                if next_pred.shape[1] == current_seq.shape[2]:
-                    next_pred = next_pred.unsqueeze(1)  # (batch, 1, features)
-                    current_seq = torch.cat([current_seq[:, 1:], next_pred], dim=1)
+            logits = self.forward(x)
+            predictions = torch.argmax(logits, dim=1)
+            return predictions
+    
+    def predict_proba(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Возвращает вероятности для каждого класса.
         
-        return torch.stack(predictions, dim=1)  # (batch, steps, output_dim)
+        Args:
+            x: Тензор последовательности
+        
+        Returns:
+            torch.Tensor: Вероятности размера [batch_size, num_classes]
+        """
+        with torch.no_grad():
+            logits = self.forward(x)
+            probabilities = torch.softmax(logits, dim=1)
+            return probabilities

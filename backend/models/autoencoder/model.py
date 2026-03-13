@@ -1,124 +1,88 @@
 """
-Autoencoder для сжатия признаков и поиска аномальных покемонов.
-
-Применение:
-1. Сжатие 26 признаков в 8-мерный вектор (latent space) для визуализации
-2. Поиск аномалий: покемоны с высокой ошибкой восстановления — "нестандартные"
-3. Улучшение поиска похожих: сравниваем в latent space вместо исходных признаков
-
-Архитектура:
-Вход(26) → Encoder(64→32→8) → Latent(8) → Decoder(32→64→26) → Выход(26)
-
-Принцип работы:
-- Encoder учится сжимать данные, сохраняя важную информацию
-- Decoder учится восстанавливать исходные данные из сжатого представления
-- Ошибка восстановления = мера "аномальности" покемона
+Архитектура автоэнкодера для детекции аномалий в характеристиках покемонов.
 """
-
 import torch
 import torch.nn as nn
 
 
 class PokemonAutoencoder(nn.Module):
     """
-    Автоэнкодер для работы с данными покемонов.
-    
-    Args:
-        input_dim: Размерность входных данных (26)
-        latent_dim: Размерность сжатого представления (по умолчанию 8)
-        hidden_dims: Размеры скрытых слоёв энкодера [64, 32]
+    Автоэнкодер для анализа характеристик покемонов.
     """
     
-    def __init__(
-        self,
-        input_dim: int = 26,
-        latent_dim: int = 8,
-        hidden_dims: list = [64, 32]
-    ):
+    def __init__(self, input_dim: int = 26, latent_dim: int = 8, 
+                 hidden_dims: list = None, dropout: float = 0.2):
         super(PokemonAutoencoder, self).__init__()
         
-        # === ENCODER: сжатие данных ===
+        if hidden_dims is None:
+            hidden_dims = [16, 12]
+        
+        self.input_dim = input_dim
+        self.latent_dim = latent_dim
+        
+        # ==================== Энкодер (сжатие) ====================
         encoder_layers = []
         prev_dim = input_dim
         
         for hidden_dim in hidden_dims:
-            encoder_layers.append(nn.Linear(prev_dim, hidden_dim))
-            encoder_layers.append(nn.ReLU())
-            encoder_layers.append(nn.BatchNorm1d(hidden_dim))
+            encoder_layers.extend([
+                nn.Linear(prev_dim, hidden_dim),
+                nn.LayerNorm(hidden_dim),  # ✅ ЗАМЕНЕНО: BatchNorm -> LayerNorm
+                nn.ReLU(inplace=True),
+                nn.Dropout(dropout)
+            ])
             prev_dim = hidden_dim
         
-        # Последний слой энкодера: выход в latent space
         encoder_layers.append(nn.Linear(prev_dim, latent_dim))
         self.encoder = nn.Sequential(*encoder_layers)
         
-        # === DECODER: восстановление данных ===
-        # Зеркальная архитектура энкодера
+        # ==================== Декодер (восстановление) ====================
         decoder_layers = []
         prev_dim = latent_dim
         
-        # Разворачиваем hidden_dims в обратном порядке
         for hidden_dim in reversed(hidden_dims):
-            decoder_layers.append(nn.Linear(prev_dim, hidden_dim))
-            decoder_layers.append(nn.ReLU())
-            decoder_layers.append(nn.BatchNorm1d(hidden_dim))
+            decoder_layers.extend([
+                nn.Linear(prev_dim, hidden_dim),
+                nn.LayerNorm(hidden_dim),  # ✅ ЗАМЕНЕНО: BatchNorm -> LayerNorm
+                nn.ReLU(inplace=True),
+                nn.Dropout(dropout)
+            ])
             prev_dim = hidden_dim
         
-        # Выходной слой: восстановление исходной размерности
         decoder_layers.append(nn.Linear(prev_dim, input_dim))
-        decoder_layers.append(nn.Sigmoid())  # Выход в [0, 1] как входные нормализованные данные
+        decoder_layers.append(nn.Sigmoid())
         self.decoder = nn.Sequential(*decoder_layers)
         
-        self.latent_dim = latent_dim
-        
+        self._initialize_weights()
+    
+    def _initialize_weights(self):
+        """Инициализация весов методом Xavier."""
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.LayerNorm):
+                nn.init.ones_(m.weight)
+                nn.init.zeros_(m.bias)
+    
     def encode(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Кодирует входные данные в latent representation.
-        
-        Args:
-            x: Тензор (batch, input_dim)
-            
-        Returns:
-            torch.Tensor: сжатые признаки (batch, latent_dim)
-        """
+        """Сжатие входных данных в латентное представление."""
         return self.encoder(x)
     
     def decode(self, z: torch.Tensor) -> torch.Tensor:
-        """
-        Восстанавливает данные из latent representation.
-        
-        Args:
-            z: Латентный вектор (batch, latent_dim)
-            
-        Returns:
-            torch.Tensor: восстановленные данные (batch, input_dim)
-        """
+        """Восстановление данных из латентного представления."""
         return self.decoder(z)
     
     def forward(self, x: torch.Tensor) -> tuple:
-        """
-        Полный проход: encode → decode.
-        
-        Returns:
-            Tuple: (latent_vector, reconstructed_output)
-        """
+        """Полный проход через автоэнкодер."""
         z = self.encode(x)
         x_reconstructed = self.decode(z)
         return z, x_reconstructed
     
     def get_reconstruction_error(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Вычисляет ошибку восстановления для каждого образца.
-        Используется для детекции аномалий.
-        
-        Args:
-            x: Входные данные
-            
-        Returns:
-            torch.Tensor: MSE error для каждого образца в батче
-        """
-        self.eval()
+        """Вычисляет ошибку восстановления для каждого образца."""
         with torch.no_grad():
-            _, x_rec = self.forward(x)
-            # MSE по признакам для каждого образца
-            errors = torch.mean((x - x_rec) ** 2, dim=1)
-        return errors
+            _, x_reconstructed = self.forward(x)
+            error = torch.mean((x - x_reconstructed) ** 2, dim=1)
+            return error

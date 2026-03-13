@@ -1,5 +1,8 @@
-"""Autoencoder для сжатия признаков и поиска аномалий"""
-from .model import PokemonAutoencoder
-from .trainer import AutoencoderTrainer
+"""
+RNN Module - Time-series analysis for Pokemon stats evolution.
 
-__all__ = ['PokemonAutoencoder', 'AutoencoderTrainer']
+Architecture: LSTM/GRU Recurrent Neural Network
+Purpose: Analyze sequential data patterns in Pokemon characteristics.
+"""
+# Заглушки для будущей реализации
+__all__ = []

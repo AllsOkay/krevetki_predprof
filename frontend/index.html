@@ -3,145 +3,268 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokémon AI - Neural Network Lab</title>
+    <title>🧠 Pokémon AI Similarity Search</title>
     <link rel="stylesheet" href="css.css">
+    <link rel="icon" href="image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🧠 Pokémon AI Lab</h1>
-            <p class="subtitle">Машинное обучение на данных о покемонах</p>
-        </header>
+    <div class="app-container">
         
-        <!-- Панель управления данными -->
-        <section class="panel data-panel">
-            <h2>📊 Данные</h2>
-            <div class="controls">
-                <button id="add-all-btn" class="btn-primary">➕ Добавить всех покемонов</button>
-                <button id="clear-btn" class="btn-danger">🗑️ Очистить БД</button>
-                <span class="db-count">В БД: <strong id="count-db">0</strong> покемонов</span>
+        <!-- HEADER -->
+        <header class="app-header">
+            <div class="header-content">
+                <h1>🧠 Pokémon AI Similarity Search</h1>
+                <p class="subtitle">Находите похожих покемонов с помощью нейросетей</p>
+            </div>
+            <div class="header-status" id="app-status">
+                <span class="status-dot"></span>
+                <span id="status-text">Подключение...</span>
+            </div>
+        </header>
+
+        <!-- MAIN CONTROLS -->
+        <!-- MAIN CONTROLS -->
+        <section class="controls-section">
+            <div class="control-group">
+                <h3>📦 Управление данными</h3>
+                <div class="button-row">
+                    <button id="add-all-btn" class="btn btn-primary">
+                        <span class="btn-icon">➕</span>
+                        Добавить всех покемонов
+                    </button>
+                    <button id="train-cnn-btn" class="btn btn-secondary">
+                        <span class="btn-icon">🎓</span>
+                        Обучить CNN
+                    </button>
+                    <button id="train-rnn-btn" class="btn btn-secondary">
+                        <span class="btn-icon">🧠</span>
+                        Обучить RNN
+                    </button>
+                    <button id="train-ae-btn" class="btn btn-secondary">
+                        <span class="btn-icon">🔄</span>
+                        Обучить AE
+                    </button>
+                    <!-- ✅ ИСПРАВЛЕНО: train-mlp-btn вместо mlp-train-btn -->
+                    <button id="train-mlp-btn" class="btn btn-secondary">
+                        <span class="btn-icon">⚔️</span>
+                        Обучить MLP
+                    </button>
+                    <button id="clear-btn" class="btn btn-danger">
+                        <span class="btn-icon">🗑️</span>
+                        Очистить всё
+                    </button>
+                </div>
             </div>
             
-            <div class="progress-container hidden" id="progress-container">
+            <div class="progress-panel hidden" id="main-progress">
+                <div class="progress-header">
+                    <span id="progress-label">Обработка...</span>
+                    <span id="progress-percent">0%</span>
+                </div>
                 <div class="progress-bar">
                     <div class="progress-fill" id="progress-fill"></div>
                 </div>
-                <span id="progress-text">Загрузка...</span>
+                <div class="progress-details" id="progress-details"></div>
             </div>
         </section>
-        
-        <!-- Панель обучения моделей -->
-        <section class="panel models-panel">
-            <h2>🎓 Обучение моделей</h2>
-            <div class="model-cards">
-                <div class="model-card">
-                    <h3>MLP</h3>
-                    <p>Классификация типов</p>
-                    <button id="train-mlp-btn" class="btn-train">🎓 Обучить</button>
-                    <button id="predict-mlp-btn" class="btn-predict" disabled>🔮 Предсказать</button>
+
+        <!-- CNN VISUAL SEARCH -->
+        <section class="feature-section cnn-section">
+            <div class="section-header">
+                <h2>🖼️ Визуальный поиск (CNN)</h2>
+                <p class="section-desc">
+                    Найдите покемонов, похожих внешне. Используется сверточная нейросеть 
+                    для анализа спрайтов и извлечения визуальных признаков.
+                </p>
+            </div>
+            
+            <div class="search-input-group">
+                <input type="text" id="cnn-input" placeholder="Введите имя покемона (напр. pikachu)" list="pokemon-suggestions" autocomplete="off">
+                <button id="cnn-search-btn" class="btn btn-primary btn-large">
+                    <span class="btn-icon">🔍</span>
+                    Найти похожих
+                </button>
+                <span class="hint">Нажмите Enter для поиска</span>
+            </div>
+            
+            <div id="cnn-loading" class="loading-panel hidden">
+                <div class="spinner"></div>
+                <span class="loading-text">Анализирую изображения через CNN...</span>
+            </div>
+            
+            <div id="cnn-results" class="results-grid hidden">
+            </div>
+        </section>
+
+        <!-- Добавить после CNN section -->
+
+<!-- ==================== RNN STRENGTH CLASSIFICATION ==================== -->
+        <section class="feature-section rnn-section">
+            <div class="section-header">
+                <h2>🧠 Классификация силы (RNN)</h2>
+                <p class="section-desc">
+                    Определите категорию силы покемона на основе последовательности характеристик.
+                    Используется LSTM-сеть для анализа паттернов статов.
+                </p>
+            </div>
+            
+            <div class="search-input-group">
+                <input type="text" id="rnn-input" placeholder="Введите имя покемона (напр. charizard)" list="pokemon-suggestions" autocomplete="off">
+                <button id="rnn-classify-btn" class="btn btn-primary btn-large">
+                    <span class="btn-icon">🔮</span>
+                    Определить силу
+                </button>
+                <button id="rnn-dist-btn" class="btn btn-secondary btn-large">
+                    <span class="btn-icon">📊</span>
+                    Распределение
+                </button>
+            </div>
+            
+            <div id="rnn-loading" class="loading-panel hidden">
+                <div class="spinner"></div>
+                <span class="loading-text">Анализирую характеристики через RNN...</span>
+            </div>
+            
+            <div id="rnn-results" class="results-grid hidden">
+            </div>
+            
+            <div id="rnn-distribution" class="distribution-panel hidden">
+            </div>
+        </section>
+
+        <!-- Добавить после RNN section -->
+
+        <!-- ==================== AUTOENCODER ORDinariness ==================== -->
+        <section class="feature-section ae-section">
+            <div class="section-header">
+                <h2>🔄 Обычность покемона (Autoencoder)</h2>
+                <p class="section-desc">
+                    Узнайте, насколько характеристики покемона типичны. 
+                    Автоэнкодер сравнивает статы с большинством покемонов 
+                    и выводит процент "обычности".
+                </p>
+            </div>
+            
+            <div class="search-input-group">
+                <input type="text" id="ae-input" placeholder="Введите имя покемона (напр. mewtwo)" list="pokemon-suggestions" autocomplete="off">
+                <button id="ae-check-btn" class="btn btn-primary btn-large">
+                    <span class="btn-icon">🔍</span>
+                    Проверить обычность
+                </button>
+                <button id="ae-stats-btn" class="btn btn-secondary btn-large">
+                    <span class="btn-icon">📈</span>
+                    Статистика
+                </button>
+            </div>
+            
+            <div id="ae-loading" class="loading-panel hidden">
+                <div class="spinner"></div>
+                <span class="loading-text">Анализирую характеристики через автоэнкодер...</span>
+            </div>
+            
+            <div id="ae-results" class="results-grid hidden">
+            </div>
+            
+            <div id="ae-statistics" class="statistics-panel hidden">
+            </div>
+        </section>
+
+        <!-- Добавить после Autoencoder section -->
+
+<!-- ==================== MLP WIN PROBABILITY ==================== -->
+        <section class="feature-section mlp-section">
+            <div class="section-header">
+                <h2>🧠 Вероятность победы (MLP)</h2>
+                <p class="section-desc">
+                    Введите характеристики покемона и узнайте вероятность победы 
+                    против случайного противника. Нейросеть обучена на симулированных боях.
+                </p>
+            </div>
+            
+            <div class="mlp-input-group">
+                <div class="stat-inputs">
+                    <div class="stat-input">
+                        <label for="mlp-hp">HP:</label>
+                        <input type="number" id="mlp-hp" placeholder="50" min="0" max="255">
+                    </div>
+                    <div class="stat-input">
+                        <label for="mlp-atk">ATK:</label>
+                        <input type="number" id="mlp-atk" placeholder="50" min="0" max="190">
+                    </div>
+                    <div class="stat-input">
+                        <label for="mlp-def">DEF:</label>
+                        <input type="number" id="mlp-def" placeholder="50" min="0" max="230">
+                    </div>
+                    <div class="stat-input">
+                        <label for="mlp-spd">SPD:</label>
+                        <input type="number" id="mlp-spd" placeholder="50" min="0" max="180">
+                    </div>
                 </div>
-                <div class="model-card">
-                    <h3>CNN</h3>
-                    <p>Классификация через "изображение"</p>
-                    <button id="train-cnn-btn" class="btn-train">🎓 Обучить</button>
-                    <button id="predict-cnn-btn" class="btn-predict" disabled>🔮 Предсказать</button>
-                </div>
-                <div class="model-card">
-                    <h3>RNN</h3>
-                    <p>Прогноз последовательностей</p>
-                    <button id="train-rnn-btn" class="btn-train">🎓 Обучить</button>
-                    <button id="predict-rnn-btn" class="btn-predict" disabled>🔮 Предсказать</button>
-                </div>
-                <div class="model-card featured">
-                    <h3>Autoencoder</h3>
-                    <p>Сжатие и поиск похожих</p>
-                    <button id="train-autoencoder-btn" class="btn-train">🎓 Обучить</button>
-                    <button id="predict-autoencoder-btn" class="btn-predict" disabled>🔮 Проверить аномалию</button>
-                </div>
-                <div class="model-card">
-                    <h3>Siamese</h3>
-                    <p>Сравнение пар покемонов</p>
-                    <button id="train-siamese-btn" class="btn-train">🎓 Обучить</button>
-                    <button id="predict-siamese-btn" class="btn-predict" disabled>🔮 Сравнить</button>
+                <div class="mlp-buttons">
+                    <button id="mlp-predict-btn" class="btn btn-primary btn-large">
+                        <span class="btn-icon">⚔️</span>
+                        Рассчитать
+                    </button>
                 </div>
             </div>
             
-            <!-- График потерь -->
-            <div class="chart-container">
-                <h4>📈 График обучения</h4>
-                <canvas id="loss-chart" width="600" height="200"></canvas>
+            <div class="mlp-hint">
+                💡 Введите статы через запятую или по отдельности. Пример: 50, 60, 50, 70
+            </div>
+            
+            <div id="mlp-loading" class="loading-panel hidden">
+                <div class="spinner"></div>
+                <span class="loading-text">Расчёт вероятности победы...</span>
+            </div>
+            
+            <div id="mlp-results" class="results-grid hidden">
             </div>
         </section>
-        
-        <!-- Панель предсказаний -->
-        <section class="panel predict-panel">
-            <h2>🔮 Предсказание</h2>
-            <div class="predict-inputs">
-                <div class="input-group">
-                    <label>Имя покемона:</label>
-                    <input type="text" id="pokemon-input" placeholder="pikachu, charizard..." list="pokemon-list">
-                    <datalist id="pokemon-list"></datalist>
-                </div>
-                <div class="input-group hidden" id="reference-group">
-                    <label>Эталонный покемон (для Siamese):</label>
-                    <input type="text" id="reference-input" placeholder="pikachu">
-                </div>
+
+        <!-- POKEMON DATABASE TABLE -->
+        <section class="data-section">
+            <div class="section-header">
+                <h2>📋 База данных покемонов</h2>
+                <p class="section-desc">
+                    Всего записей: <strong id="db-count">0</strong>
+                    <button id="refresh-btn" class="btn btn-small btn-outline">🔄 Обновить</button>
+                </p>
             </div>
-            <div id="predict-results" class="results-box hidden"></div>
-            <div class="input-group">
-    <label>Модель:</label>
-    <select id="model-select">
-        <option value="mlp">MLP</option>
-        <option value="cnn">CNN</option>
-        <option value="rnn">RNN</option>
-        <option value="autoencoder">Autoencoder</option>
-        <option value="siamese">Siamese</option>
-    </select>
-</div>
-        </section>
-        
-        <!-- Панель поиска похожих -->
-        <section class="panel similar-panel">
-            <h2>🔍 Найти похожих (Autoencoder)</h2>
-            <div class="search-box">
-                <input type="text" id="similar-input" placeholder="Введите имя покемона">
-                <button id="find-similar-btn" class="btn-search">Найти</button>
-            </div>
-            <div id="similar-results" class="results-grid hidden"></div>
-        </section>
-        
-        <!-- Статус моделей -->
-        <section class="panel status-panel">
-            <h2>📊 Статус</h2>
-            <div id="model-status" class="status-box">
-                <em>Модели не загружены. Обучите модель для начала работы.</em>
-            </div>
-        </section>
-        
-        <!-- Таблица покемонов -->
-        <section class="panel table-panel">
-            <h2>📋 Покемоны в базе</h2>
-            <div class="table-container">
-                <table id="pokemon-table">
+            
+            <div class="table-wrapper">
+                <table id="pokemon-table" class="data-table">
                     <thead>
                         <tr>
-                            <th>id</th>
-                            <th>name</th>
-                            <th>types</th>
-                            <th>hp</th>
-                            <th>atk</th>
-                            <th>def</th>
-                            <th>speed</th>
+                            <th>ID</th>
+                            <th>Имя</th>
+                            <th>Типы</th>
+                            <th>HP</th>
+                            <th>ATK</th>
+                            <th>DEF</th>
+                            <th>SPD</th>
+                            <th>Спрайт</th>
                         </tr>
                     </thead>
                     <tbody id="pokemon-table-body">
-                        <!-- Данные добавляются динамически -->
                     </tbody>
                 </table>
             </div>
         </section>
+
+        <!-- FOOTER -->
+        <footer class="app-footer">
+            <div class="footer-content">
+                <p>🧠 Pokémon AI Search • Модульная архитектура нейросетей</p>
+                <p class="footer-links">
+                    <a href="/api/health" target="_blank">Health Check</a> •
+                    <a href="https://pokeapi.co" target="_blank">PokeAPI</a> •
+                    <a href="https://pytorch.org" target="_blank">PyTorch</a>
+                </p>
+            </div>
+        </footer>
+
     </div>
-    
+
     <script src="script.js"></script>
 </body>
 </html>

@@ -1,85 +1,114 @@
 """
-MLP (Multi-Layer Perceptron) для задач классификации и регрессии.
+Архитектура полносвязной нейросети (MLP) для предсказания вероятности победы.
 
-Применение в проекте:
-- Классификация: предсказание основного типа покемона по характеристикам
-- Регрессия: предсказание общего боевого рейтинга (сумма всех статов)
+Принцип работы:
+1. Входные данные: 4 характеристики (HP, ATK, DEF, SPD) нормализованные [0, 1]
+2. Несколько скрытых слоёв с ReLU активацией
+3. Выходной слой с Sigmoid для вероятности победы (0-100%)
 
-Архитектура:
-Вход (26 признаков) → Dense(64) → ReLU → Dropout → Dense(32) → ReLU → Выход
+Модель обучается на симулированных боях между покемонами из базы данных.
+Победа определяется сравнением BST (Base Stat Total) с элементом случайности.
 """
-
 import torch
 import torch.nn as nn
 
 
-class PokemonMLP(nn.Module):
+class PokemonMLPClassifier(nn.Module):
     """
-    Полносвязная нейросеть для работы с табличными данными покемонов.
+    Полносвязная нейросеть для классификации вероятности победы.
     
-    Args:
-        input_dim: Количество входных признаков (по умолчанию 26: 8 статов + 18 типов)
-        hidden_dims: Список размеров скрытых слоёв [64, 32]
-        output_dim: Размер выхода (1 для регрессии, N для классификации)
-        task: 'regression' или 'classification'
-        dropout_rate: Вероятность отключения нейронов для регуляризации
+    Архитектура:
+    - Вход: 4 нормализованные характеристики
+    - Скрытые слои: [64, 32, 16] с Dropout и BatchNorm
+    - Выход: 1 значение (вероятность победы 0.0-1.0)
     """
     
-    def __init__(
-        self, 
-        input_dim: int = 26, 
-        hidden_dims: list = [64, 32], 
-        output_dim: int = 1,
-        task: str = 'regression',
-        dropout_rate: float = 0.2
-    ):
-        super(PokemonMLP, self).__init__()
+    def __init__(self, input_dim: int = 4, hidden_dims: list = None, 
+                 dropout: float = 0.3):
+        """
+        Инициализация архитектуры MLP.
         
-        self.task = task
+        Args:
+            input_dim: Размерность входа (4 стата)
+            hidden_dims: Список размерностей скрытых слоёв
+            dropout: Коэффициент Dropout для регуляризации
+        """
+        super(PokemonMLPClassifier, self).__init__()
         
-        # Собираем слои динамически
+        if hidden_dims is None:
+            hidden_dims = [64, 32, 16]
+        
+        self.input_dim = input_dim
+        
+        # ==================== Построение слоёв ====================
         layers = []
         prev_dim = input_dim
         
         for hidden_dim in hidden_dims:
-            layers.append(nn.Linear(prev_dim, hidden_dim))
-            layers.append(nn.ReLU())  # Функция активации
-            layers.append(nn.Dropout(dropout_rate))  # Регуляризация
+            layers.extend([
+                nn.Linear(prev_dim, hidden_dim),
+                nn.BatchNorm1d(hidden_dim),
+                nn.ReLU(inplace=True),
+                nn.Dropout(dropout)
+            ])
             prev_dim = hidden_dim
         
-        # Выходной слой
-        layers.append(nn.Linear(prev_dim, output_dim))
-        
-        if task == 'classification' and output_dim > 1:
-            # Для многоклассовой классификации добавляем softmax
-            layers.append(nn.Softmax(dim=1))
+        # Выходной слой: 1 нейрон с Sigmoid для вероятности
+        layers.append(nn.Linear(prev_dim, 1))
+        layers.append(nn.Sigmoid())
         
         self.network = nn.Sequential(*layers)
         
+        # Инициализация весов
+        self._initialize_weights()
+    
+    def _initialize_weights(self):
+        """Инициализация весов методом Xavier."""
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.BatchNorm1d):
+                nn.init.ones_(m.weight)
+                nn.init.zeros_(m.bias)
+    
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Прямой проход через сеть.
         
         Args:
-            x: Входной тензор (batch_size, input_dim)
-            
+            x: Тензор размера [batch_size, 4]
+        
         Returns:
-            torch.Tensor: предсказания сети
+            torch.Tensor: Вероятность победы размера [batch_size, 1]
         """
         return self.network(x)
     
-    def predict_class(self, x: torch.Tensor) -> torch.Tensor:
+    def predict_proba(self, x: torch.Tensor) -> torch.Tensor:
         """
-        Вспомогательный метод для получения класса (для классификации).
+        Предсказание вероятности победы (без градиентов).
         
         Args:
-            x: Входные данные
-            
+            x: Тензор размера [batch_size, 4]
+        
         Returns:
-            torch.Tensor: индексы классов
+            torch.Tensor: Вероятность победы
         """
-        if self.task == 'classification':
-            with torch.no_grad():
-                output = self.network(x)
-                return torch.argmax(output, dim=1)
-        raise ValueError("Метод доступен только для задачи классификации")
+        with torch.no_grad():
+            return self.forward(x)
+    
+    def predict(self, x: torch.Tensor, threshold: float = 0.5) -> torch.Tensor:
+        """
+        Бинарное предсказание (победа/поражение).
+        
+        Args:
+            x: Тензор размера [batch_size, 4]
+            threshold: Порог для классификации
+        
+        Returns:
+            torch.Tensor: 1 (победа) или 0 (поражение)
+        """
+        with torch.no_grad():
+            proba = self.forward(x)
+            return (proba >= threshold).long()

@@ -1,632 +1,980 @@
 /**
- * Pokémon AI - Frontend логика
- * Управление интерфейсом, обучение моделей, предсказания
+ * Pokémon AI Similarity Search - Frontend Logic
+ * Полная версия со всеми функциями (CNN, RNN, Autoencoder, MLP)
+ * 
+ * Этот файл обрабатывает все взаимодействия пользователя с интерфейсом:
+ * - Загрузка и отображение покемонов из базы данных
+ * - Массовая загрузка всех покемонов из PokeAPI
+ * - Обучение нейросетей (CNN, RNN, Autoencoder, MLP)
+ * - Визуальный поиск похожих покемонов (CNN)
+ * - Классификация силы покемонов (RNN)
+ * - Определение "обычности" покемонов (Autoencoder)
+ * - Предсказание вероятности победы (MLP)
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-    // === DOM элементы ===
-    const elements = {
-        addAllBtn: document.getElementById('add-all-btn'),
-        trainBtns: {
-            mlp: document.getElementById('train-mlp-btn'),
-            cnn: document.getElementById('train-cnn-btn'),
-            rnn: document.getElementById('train-rnn-btn'),
-            autoencoder: document.getElementById('train-autoencoder-btn'),
-            siamese: document.getElementById('train-siamese-btn')
-        },
-        predictBtns: {
-            mlp: document.getElementById('predict-mlp-btn'),
-            cnn: document.getElementById('predict-cnn-btn'),
-            rnn: document.getElementById('predict-rnn-btn'),
-            autoencoder: document.getElementById('predict-autoencoder-btn'),
-            siamese: document.getElementById('predict-siamese-btn')
-        },
-        clearBtn: document.getElementById('clear-btn'),
-        findSimilarBtn: document.getElementById('find-similar-btn'),
-        
-        pokemonInput: document.getElementById('pokemon-input'),
-        similarInput: document.getElementById('similar-input'),
-        referenceInput: document.getElementById('reference-input'),
-        
-        tableBody: document.getElementById('pokemon-table-body'),
-        countDb: document.getElementById('count-db'),
-        
-        progressContainer: document.getElementById('progress-container'),
-        progressFill: document.getElementById('progress-fill'),
-        progressText: document.getElementById('progress-text'),
-        
-        similarResults: document.getElementById('similar-results'),
-        predictResults: document.getElementById('predict-results'),
-        modelStatus: document.getElementById('model-status'),
-        
-        chartCanvas: document.getElementById('loss-chart')
-    };
+    console.log('✅ DOM загружен, инициализация...');
     
-    // === Конфигурация ===
-    const CONFIG = {
-        POKEAPI_BASE: 'https://pokeapi.co/api/v2',
-        BATCH_SIZE: 5,
-        REQUEST_DELAY: 100,
-        TOTAL_POKEMON: 1302
-    };
+    // ==================== DOM ЭЛЕМЕНТЫ ====================
+    // Кнопки управления данными
+    const addAllBtn = document.getElementById('add-all-btn');
+    const trainCnnBtn = document.getElementById('train-cnn-btn');
+    const trainRnnBtn = document.getElementById('train-rnn-btn');
+    const trainAeBtn = document.getElementById('train-ae-btn');
+    const trainMlpBtn = document.getElementById('train-mlp-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const refreshBtn = document.getElementById('refresh-btn');
     
-    // === Инициализация ===
-    loadPokemon();
-    checkModelsStatus();
+    // CNN элементы (визуальный поиск)
+    const cnnInput = document.getElementById('cnn-input');
+    const cnnSearchBtn = document.getElementById('cnn-search-btn');
+    const cnnResults = document.getElementById('cnn-results');
+    const cnnLoading = document.getElementById('cnn-loading');
     
-    // === Обработчики событий ===
-    elements.addAllBtn.addEventListener('click', addAllPokemon);
-    elements.clearBtn.addEventListener('click', clearData);
-    elements.findSimilarBtn.addEventListener('click', findSimilar);
+    // RNN элементы (классификация силы)
+    const rnnInput = document.getElementById('rnn-input');
+    const rnnClassifyBtn = document.getElementById('rnn-classify-btn');
+    const rnnDistBtn = document.getElementById('rnn-dist-btn');
+    const rnnResults = document.getElementById('rnn-results');
+    const rnnDistribution = document.getElementById('rnn-distribution');
+    const rnnLoading = document.getElementById('rnn-loading');
     
-    // Обработчики обучения моделей
-    Object.entries(elements.trainBtns).forEach(([modelType, btn]) => {
-        if (btn) {
-            btn.addEventListener('click', () => trainModel(modelType));
-        }
-    });
+    // Autoencoder элементы (обычность)
+    const aeInput = document.getElementById('ae-input');
+    const aeCheckBtn = document.getElementById('ae-check-btn');
+    const aeStatsBtn = document.getElementById('ae-stats-btn');
+    const aeResults = document.getElementById('ae-results');
+    const aeStatistics = document.getElementById('ae-statistics');
+    const aeLoading = document.getElementById('ae-loading');
     
-    // Обработчики предсказания
-    Object.entries(elements.predictBtns).forEach(([modelType, btn]) => {
-        if (btn) {
-            btn.addEventListener('click', () => predictWithModel(modelType));
-        }
-    });
+    // MLP элементы (вероятность победы)
+    const mlpHpInput = document.getElementById('mlp-hp');
+    const mlpAtkInput = document.getElementById('mlp-atk');
+    const mlpDefInput = document.getElementById('mlp-def');
+    const mlpSpdInput = document.getElementById('mlp-spd');
+    const mlpPredictBtn = document.getElementById('mlp-predict-btn');
+    const mlpTrainBtn = document.getElementById('mlp-train-btn');
+    const mlpResults = document.getElementById('mlp-results');
+    const mlpLoading = document.getElementById('mlp-loading');
     
-    // Поддержка Enter в полях ввода
-   elements.pokemonInput?.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        const selectedModel = document.getElementById('model-select').value;
-        predictWithModel(selectedModel);
+    // Прогресс бар (для массовой загрузки)
+    const mainProgress = document.getElementById('main-progress');
+    const progressFill = document.getElementById('progress-fill');
+    const progressLabel = document.getElementById('progress-label');
+    const progressPercent = document.getElementById('progress-percent');
+    const progressDetails = document.getElementById('progress-details');
+    
+    // Таблица покемонов
+    const pokemonTableBody = document.getElementById('pokemon-table-body');
+    const dbCount = document.getElementById('db-count');
+    
+    // Статус приложения
+    const statusText = document.getElementById('status-text');
+    const statusDot = document.querySelector('.status-dot');
+    
+    // ==================== ПРОВЕРКА ЭЛЕМЕНТОВ ====================
+    if (!addAllBtn || !clearBtn) {
+        console.error('❌ Не найдены кнопки управления! Проверьте index.html');
     }
-});
     
-    // === Основные функции ===
+    // ==================== ИНИЦИАЛИЗАЦИЯ ====================
+    checkServerHealth();
+    loadPokemon();
+    loadAutocomplete();
+    
+    // ==================== ОБРАБОТЧИКИ СОБЫТИЙ ====================
+    
+    // Кнопка "Добавить всех покемонов"
+    if (addAllBtn) {
+        addAllBtn.addEventListener('click', async () => {
+            console.log('🔘 Нажата кнопка: Добавить всех покемонов');
+            await addAllPokemon();
+        });
+    }
+    
+    // Кнопка "Обучить CNN"
+    if (trainCnnBtn) {
+        trainCnnBtn.addEventListener('click', async () => {
+            console.log('🔘 Нажата кнопка: Обучить CNN');
+            await trainCNN();
+        });
+    }
+    
+    // Кнопка "Обучить RNN"
+    if (trainRnnBtn) {
+        trainRnnBtn.addEventListener('click', async () => {
+            console.log('🔘 Нажата кнопка: Обучить RNN');
+            await trainRNN();
+        });
+    }
+    
+    // Кнопка "Обучить Autoencoder"
+    if (trainAeBtn) {
+        trainAeBtn.addEventListener('click', async () => {
+            console.log('🔘 Нажата кнопка: Обучить Autoencoder');
+            await trainAE();
+        });
+    }
+    
+    // Кнопка "Обучить MLP"
+    if (trainMlpBtn) {
+        trainMlpBtn.addEventListener('click', async () => {
+            console.log('🔘 Нажата кнопка: Обучить MLP');
+            await trainMLP();
+        });
+    }
+    
+    // Кнопка "Очистить всё"
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            console.log('🔘 Нажата кнопка: Очистить всё');
+            if (confirm('⚠️ Вы уверены? Все данные и модели будут удалены!')) {
+                clearAllData();
+            }
+        });
+    }
+    
+    // Кнопка "Найти похожих" (CNN поиск)
+    if (cnnSearchBtn) {
+        cnnSearchBtn.addEventListener('click', () => {
+            console.log('🔘 Нажата кнопка: Найти похожих (CNN)');
+            findSimilarCNN();
+        });
+    }
+    
+    // Поиск по Enter в поле CNN
+    if (cnnInput) {
+        cnnInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                console.log('🔘 Нажат Enter в поле CNN поиска');
+                findSimilarCNN();
+            }
+        });
+    }
+    
+    // Кнопка "Определить силу" (RNN классификация)
+    if (rnnClassifyBtn) {
+        rnnClassifyBtn.addEventListener('click', () => {
+            console.log('🔘 Нажата кнопка: Определить силу (RNN)');
+            classifyPokemonRNN();
+        });
+    }
+    
+    // Кнопка "Распределение" (RNN статистика)
+    if (rnnDistBtn) {
+        rnnDistBtn.addEventListener('click', () => {
+            console.log('🔘 Нажата кнопка: Распределение (RNN)');
+            showRNNDistribution();
+        });
+    }
+    
+    // Поиск по Enter в поле RNN
+    if (rnnInput) {
+        rnnInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                console.log('🔘 Нажат Enter в поле RNN');
+                classifyPokemonRNN();
+            }
+        });
+    }
+    
+    // Кнопка "Проверить обычность" (Autoencoder)
+    if (aeCheckBtn) {
+        aeCheckBtn.addEventListener('click', () => {
+            console.log('🔘 Нажата кнопка: Проверить обычность (AE)');
+            checkPokemonOrdinariness();
+        });
+    }
+    
+    // Кнопка "Статистика" (Autoencoder)
+    if (aeStatsBtn) {
+        aeStatsBtn.addEventListener('click', () => {
+            console.log('🔘 Нажата кнопка: Статистика (AE)');
+            showAEStatistics();
+        });
+    }
+    
+    // Поиск по Enter в поле AE
+    if (aeInput) {
+        aeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                console.log('🔘 Нажат Enter в поле AE');
+                checkPokemonOrdinariness();
+            }
+        });
+    }
+    
+    // Кнопка "Рассчитать вероятность" (MLP)
+    if (mlpPredictBtn) {
+        mlpPredictBtn.addEventListener('click', () => {
+            console.log('🔘 Нажата кнопка: Рассчитать вероятность (MLP)');
+            predictWinProbability();
+        });
+    }
+    
+    // Кнопка обновления таблицы
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            console.log('🔘 Нажата кнопка: Обновить таблицу');
+            loadPokemon();
+        });
+    }
+    
+    // ==================== ФУНКЦИИ ====================
     
     /**
-     * Загружает покемонов из БД и отображает в таблице
+     * Проверка работоспособности сервера
+     */
+    async function checkServerHealth() {
+        try {
+            const response = await fetch('/api/health');
+            const data = await response.json();
+            
+            if (data.status === 'ok') {
+                statusText.textContent = `Подключено | Покемонов: ${data.pokemon_count || 0}`;
+                statusDot.classList.add('connected');
+                console.log('✅ Сервер работает:', data);
+            } else {
+                statusText.textContent = 'Ошибка';
+                statusDot.classList.remove('connected');
+            }
+        } catch (error) {
+            statusText.textContent = 'Не подключено';
+            statusDot.classList.remove('connected');
+            console.error('❌ Сервер недоступен:', error);
+        }
+    }
+    
+    /**
+     * Загрузка покемонов из БД в таблицу
      */
     async function loadPokemon() {
         try {
-            const res = await fetch('/api/pokemon');
-            const data = await res.json();
+            const response = await fetch('/api/pokemon');
+            const pokemonList = await response.json();
             
-            elements.tableBody.innerHTML = '';
-            elements.countDb.textContent = data.length;
+            pokemonTableBody.innerHTML = '';
+            dbCount.textContent = pokemonList.length;
             
-            data.forEach(p => {
-                const tr = document.createElement('tr');
-                tr.dataset.id = p.id;
-                tr.innerHTML = `
-                    <td>${p.id}</td>
-                    <td><strong>${capitalize(p.name)}</strong></td>
-                    <td>${p.types || '-'}</td>
-                    <td>${p.hp}</td>
-                    <td>${p.attack}</td>
-                    <td>${p.defense}</td>
-                    <td>${p.speed}</td>
+            pokemonList.forEach(pokemon => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${pokemon.id}</td>
+                    <td><strong>${pokemon.name}</strong></td>
+                    <td>${pokemon.types || 'N/A'}</td>
+                    <td>${pokemon.hp || 0}</td>
+                    <td>${pokemon.attack || 0}</td>
+                    <td>${pokemon.defense || 0}</td>
+                    <td>${pokemon.speed || 0}</td>
+                    <td class="sprite-cell">
+                        <img src="${pokemon.sprite_url || 'https://via.placeholder.com/48?text=?'}" 
+                             alt="${pokemon.name}"
+                             onerror="this.src='https://via.placeholder.com/48?text=Error'">
+                    </td>
                 `;
-                elements.tableBody.appendChild(tr);
+                pokemonTableBody.appendChild(row);
             });
-        } catch (e) {
-            console.error('Ошибка загрузки покемонов:', e);
+            
+            console.log(`✅ Загружено ${pokemonList.length} покемонов`);
+        } catch (error) {
+            console.error('❌ Ошибка загрузки покемонов:', error);
+            dbCount.textContent = '0';
         }
     }
     
     /**
-     * Добавляет всех покемонов из PokeAPI
+     * Добавить всех покемонов из PokeAPI
      */
     async function addAllPokemon() {
-        setButtonsDisabled(true);
+        if (!addAllBtn) return;
+        
+        addAllBtn.disabled = true;
         showProgress(true);
+        updateProgress(0, 'Получение списка...', '');
         
         try {
-            // Шаг 1: Получаем список всех покемонов
-            updateProgress(0, '📡 Получение списка покемонов...');
-            const allPokemon = await fetchAllPokemonList();
+            const limit = 1302;
+            const response = await fetch(`https://pokeapi.co/api/v2/pokemon?limit=${limit}`);
+            const data = await response.json();
             
-            // Шаг 2: Получаем уже существующих ID
-            const existingIds = await getExistingPokemonIds();
-            const newPokemon = allPokemon.filter(p => !existingIds.includes(p.id));
-            
-            if (newPokemon.length === 0) {
-                updateProgress(100, '✅ Все покемоны уже добавлены!');
-                setTimeout(() => showProgress(false), 2000);
-                setButtonsDisabled(false);
-                return;
-            }
-            
-            updateProgress(0, `🔄 Обработка ${newPokemon.length} новых покемонов...`);
-            
-            // Шаг 3: Обрабатываем пакетами
+            const total = data.results.length;
             let processed = 0;
-            let errors = 0;
+            let successCount = 0;
+            let failedCount = 0;
             
-            for (let i = 0; i < newPokemon.length; i += CONFIG.BATCH_SIZE) {
-                const batch = newPokemon.slice(i, i + CONFIG.BATCH_SIZE);
+            updateProgress(5, 'Проверка существующих...', '');
+            const existingResponse = await fetch('/api/pokemon');
+            const existing = await existingResponse.json();
+            const existingIds = existing.map(p => p.id);
+            
+            updateProgress(10, `Найдено ${total} покемонов. Новые: ${total - existingIds.length}`, '');
+            
+            const BATCH_SIZE = 10;
+            
+            for (let i = 0; i < total; i += BATCH_SIZE) {
+                const batch = data.results.slice(i, i + BATCH_SIZE);
                 
-                const promises = batch.map(pokemon =>
-                    fetchPokemonDetails(pokemon.url)
-                        .then(details => savePokemonToDB(details))
-                        .then(() => {
-                            addPokemonToTable(details);
+                const promises = batch.map(async (pokemon, idx) => {
+                    const id = i + idx + 1;
+                    
+                    if (existingIds.includes(id)) {
+                        processed++;
+                        return;
+                    }
+                    
+                    try {
+                        const detailResponse = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+                        
+                        if (!detailResponse.ok) {
+                            failedCount++;
                             processed++;
-                            const percent = Math.round((processed / newPokemon.length) * 100);
-                            updateProgress(percent, `✅ Обработано: ${processed}/${newPokemon.length}`);
-                        })
-                        .catch(err => {
-                            console.warn(`⚠️ Не удалось: ${pokemon.name}`, err);
-                            errors++;
-                            processed++;
-                        })
-                );
+                            return;
+                        }
+                        
+                        const detail = await detailResponse.json();
+                        const spriteUrl = detail.sprites?.front_default || null;
+                        
+                        await fetch('/api/pokemon', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                id: detail.id,
+                                name: detail.name,
+                                types: detail.types.map(t => t.type.name).join(', '),
+                                height: detail.height,
+                                weight: detail.weight,
+                                hp: detail.stats.find(s => s.stat.name === 'hp')?.base_stat || 0,
+                                attack: detail.stats.find(s => s.stat.name === 'attack')?.base_stat || 0,
+                                defense: detail.stats.find(s => s.stat.name === 'defense')?.base_stat || 0,
+                                'special-attack': detail.stats.find(s => s.stat.name === 'special-attack')?.base_stat || 0,
+                                'special-defense': detail.stats.find(s => s.stat.name === 'special-defense')?.base_stat || 0,
+                                speed: detail.stats.find(s => s.stat.name === 'speed')?.base_stat || 0,
+                                sprite_url: spriteUrl
+                            })
+                        });
+                        
+                        successCount++;
+                        
+                    } catch (err) {
+                        console.warn(`⚠️ Ошибка ${pokemon.name}:`, err);
+                        failedCount++;
+                    }
+                    
+                    processed++;
+                    const percent = Math.round((processed / total) * 100);
+                    updateProgress(
+                        percent, 
+                        `Обработано: ${processed}/${total}`, 
+                        `${percent}% | Успешно: ${successCount} | Ошибки: ${failedCount}`
+                    );
+                });
                 
                 await Promise.all(promises);
                 
-                // Задержка между пакетами (уважение к API)
-                if (i + CONFIG.BATCH_SIZE < newPokemon.length) {
-                    await sleep(CONFIG.REQUEST_DELAY);
+                if (i + BATCH_SIZE < total) {
+                    await sleep(200);
                 }
             }
             
-            const message = errors > 0 
-                ? `✅ Готово! Добавлено ${processed - errors}, ошибок: ${errors}`
-                : `✅ Готово! Добавлено ${newPokemon.length} покемонов`;
-                
-            updateProgress(100, message);
-            elements.countDb.textContent = parseInt(elements.countDb.textContent) + (processed - errors);
+            updateProgress(
+                100, 
+                `✅ Готово! Добавлено: ${successCount}`, 
+                `Всего в БД: ${existing.length + successCount}`
+            );
             
+            loadPokemon();
             setTimeout(() => showProgress(false), 3000);
             
         } catch (error) {
-            console.error('❌ Критическая ошибка:', error);
-            updateProgress(0, `❌ Ошибка: ${error.message}`);
-            alert('Произошла ошибка при добавлении покемонов');
+            console.error('❌ Ошибка добавления покемонов:', error);
+            updateProgress(0, '❌ Ошибка', '0%');
+            alert('Ошибка при добавлении покемонов: ' + error.message);
         } finally {
-            setButtonsDisabled(false);
+            addAllBtn.disabled = false;
         }
     }
     
     /**
-     * Получает список всех покемонов из PokeAPI
+     * Обучить CNN модель
      */
-    async function fetchAllPokemonList() {
-        const response = await fetch(`${CONFIG.POKEAPI_BASE}/pokemon?limit=${CONFIG.TOTAL_POKEMON}`);
-        if (!response.ok) throw new Error('Не удалось получить список покемонов');
+    async function trainCNN() {
+        if (!trainCnnBtn) return;
         
-        const data = await response.json();
-        return data.results.map((item, index) => ({
-            id: index + 1,
-            name: item.name,
-            url: item.url
-        }));
-    }
-    
-    /**
-     * Получает детальные данные о покемоне
-     */
-    async function fetchPokemonDetails(url) {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        
-        const data = await response.json();
-        
-        return {
-            id: data.id,
-            name: data.name,
-            types: data.types.map(t => t.type.name).join(', '),
-            height: data.height,
-            weight: data.weight,
-            hp: getStatValue(data.stats, 'hp'),
-            attack: getStatValue(data.stats, 'attack'),
-            defense: getStatValue(data.stats, 'defense'),
-            'special-attack': getStatValue(data.stats, 'special-attack'),
-            'special-defense': getStatValue(data.stats, 'special-defense'),
-            speed: getStatValue(data.stats, 'speed')
-        };
-    }
-    
-    /**
-     * Извлекает значение характеристики
-     */
-    function getStatValue(stats, statName) {
-        const stat = stats.find(s => s.stat.name === statName);
-        return stat ? stat.base_stat : 0;
-    }
-    
-    /**
-     * Получает список существующих ID
-     */
-    async function getExistingPokemonIds() {
-        try {
-            const response = await fetch('/api/pokemon');
-            if (response.ok) {
-                const data = await response.json();
-                return data.map(p => p.id);
-            }
-        } catch (e) {
-            console.warn('Не удалось получить существующие ID:', e);
-        }
-        return [];
-    }
-    
-    /**
-     * Сохраняет покемона в БД
-     */
-    async function savePokemonToDB(pokemon) {
-        const response = await fetch('/api/pokemon', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(pokemon)
-        });
-        
-        if (!response.ok && response.status !== 409) {
-            throw new Error('Не удалось сохранить в БД');
-        }
-        return pokemon;
-    }
-    
-    /**
-     * Добавляет строку в таблицу
-     */
-    function addPokemonToTable(pokemon) {
-        const existingRow = elements.tableBody.querySelector(`tr[data-id="${pokemon.id}"]`);
-        if (existingRow) return;
-        
-        const row = document.createElement('tr');
-        row.dataset.id = pokemon.id;
-        row.style.animation = 'fadeIn 0.3s ease';
-        
-        row.innerHTML = `
-            <td>${pokemon.id}</td>
-            <td><strong>${capitalize(pokemon.name)}</strong></td>
-            <td>${pokemon.types}</td>
-            <td>${pokemon.hp}</td>
-            <td>${pokemon.attack}</td>
-            <td>${pokemon.defense}</td>
-            <td>${pokemon.speed}</td>
-        `;
-        elements.tableBody.appendChild(row);
-    }
-    
-    // === Обучение моделей ===
-    
-    /**
-     * Запускает обучение указанной модели
-     */
-    async function trainModel(modelType) {
-        const btn = elements.trainBtns[modelType];
-        if (!btn) return;
-        
-        const originalText = btn.textContent;
-        btn.disabled = true;
-        btn.textContent = '🔄 Обучение...';
-        showProgress(true);
-        updateProgress(0, `Начало обучения ${modelType.toUpperCase()}...`);
+        trainCnnBtn.disabled = true;
+        trainCnnBtn.textContent = '⏳ Обучение...';
         
         try {
-            const res = await fetch(`/api/train/${modelType}`, { method: 'POST' });
-            const data = await res.json();
+            const response = await fetch('/api/cnn/train', { method: 'POST' });
+            const result = await response.json();
             
-            if (data.status === 'trained') {
-                updateProgress(100, `✅ ${modelType.toUpperCase()} успешно обучена!`);
-                
-                // Отображаем график потерь если есть данные
-                if (data.history?.train_loss) {
-                    renderLossChart(data.history, modelType);
-                }
-                
-                setTimeout(() => {
-                    showProgress(false);
-                    checkModelsStatus();
-                }, 2000);
+            if (result.success) {
+                alert(
+                    `✅ CNN модель обучена!\n\n` +
+                    `📊 Покемонов в обучении: ${result.samples}\n` +
+                    `🔄 Эпох: ${result.epochs}\n` +
+                    `📉 Финальная потеря: ${result.final_loss?.toFixed(4)}\n\n` +
+                    `💡 Теперь можно искать визуально похожих покемонов!`
+                );
             } else {
-                updateProgress(0, `❌ Ошибка: ${data.error || 'Неизвестная ошибка'}`);
-                alert(`⚠️ Ошибка обучения: ${data.error || 'Недостаточно данных'}`);
-            }
-        } catch (e) {
-            updateProgress(0, `❌ Ошибка соединения`);
-            alert('❌ Ошибка соединения с сервером');
-        } finally {
-            btn.disabled = false;
-            btn.textContent = originalText;
-        }
-    }
-    
-    /**
-     * Проверяет статус загруженных моделей
-     */
-    async function checkModelsStatus() {
-        try {
-            const res = await fetch('/api/models/status');
-            const status = await res.json();
-            
-            if (elements.modelStatus) {
-                elements.modelStatus.innerHTML = `
-                    <strong>📊 Статус:</strong><br>
-                    Загружено моделей: ${status.loaded.join(', ') || 'нет'}<br>
-                    Покемонов в БД: ${status.pokemon_count}<br>
-                    Нормализация: ${status.scaler_loaded ? '✅' : '❌'}
-                `;
-            }
-            
-            // Обновляем состояние кнопок предсказания
-            Object.entries(elements.predictBtns).forEach(([type, btn]) => {
-                if (btn) {
-                    btn.disabled = !status.loaded.includes(type);
-                    btn.title = status.loaded.includes(type) 
-                        ? 'Готово к использованию' 
-                        : 'Сначала обучите модель';
+                let message = `⚠️ Ошибка обучения CNN: ${result.reason || 'Неизвестная ошибка'}\n\n`;
+                if (result.current_count && result.required_count) {
+                    message += `📊 Сейчас в БД: ${result.current_count} покемонов со спрайтами\n`;
+                    message += `🎯 Нужно минимум: ${result.required_count}\n\n`;
+                    message += `💡 Нажмите "Добавить всех покемонов" и дождитесь завершения!`;
                 }
-            });
-            
-        } catch (e) {
-            console.warn('Не удалось проверить статус моделей:', e);
+                alert(message);
+            }
+        } catch (error) {
+            console.error('❌ Ошибка обучения CNN:', error);
+            alert('Ошибка при обучении CNN модели: ' + error.message);
+        } finally {
+            trainCnnBtn.disabled = false;
+            trainCnnBtn.textContent = '🎓 Обучить CNN';
         }
     }
     
-    // === Предсказание ===
-    
     /**
-     * Выполняет предсказание с использованием указанной модели
+     * Обучить RNN модель
      */
-    async function predictWithModel(modelType) {
-        const pokemonName = elements.pokemonInput?.value.trim().toLowerCase();
-        if (!pokemonName) {
-            alert('Введите имя покемона');
-            elements.pokemonInput?.focus();
-            return;
-        }
+    async function trainRNN() {
+        if (!trainRnnBtn) return;
         
-        const btn = elements.predictBtns[modelType];
-        if (btn?.disabled) {
-            alert(`Сначала обучите модель ${modelType.toUpperCase()}`);
-            return;
-        }
-        
-        elements.predictResults.innerHTML = '<p>🔮 Предсказание...</p>';
-        elements.predictResults.classList.remove('hidden');
+        trainRnnBtn.disabled = true;
+        trainRnnBtn.textContent = '⏳ Обучение...';
         
         try {
-            const payload = { pokemon_name: pokemonName };
+            const response = await fetch('/api/rnn/train', { method: 'POST' });
+            const result = await response.json();
             
-            // Для сиамской сети добавляем эталонного покемона
-            if (modelType === 'siamese' && elements.referenceInput?.value) {
-                payload.reference_pokemon = elements.referenceInput.value.trim().toLowerCase();
+            if (result.success) {
+                alert(
+                    `✅ RNN модель обучена!\n\n` +
+                    `📊 Покемонов в обучении: ${result.samples}\n` +
+                    `🔄 Эпох: ${result.epochs}\n` +
+                    `📈 Финальная точность: ${(result.final_accuracy * 100).toFixed(1)}%\n\n` +
+                    `💡 Теперь можно классифицировать силу покемонов!`
+                );
+            } else {
+                let message = `⚠️ Ошибка обучения RNN: ${result.reason || 'Неизвестная ошибка'}\n\n`;
+                if (result.current_count && result.required_count) {
+                    message += `📊 Сейчас в БД: ${result.current_count} покемонов\n`;
+                    message += `🎯 Нужно минимум: ${result.required_count}\n\n`;
+                    message += `💡 Нажмите "Добавить всех покемонов" и дождитесь завершения!`;
+                }
+                alert(message);
             }
-            
-            const res = await fetch(`/api/predict/${modelType}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            
-            const data = await res.json();
-            
-            if (data.error) {
-                elements.predictResults.innerHTML = `<p style="color:red">❌ ${data.error}</p>`;
-                return;
-            }
-            
-            // Формируем вывод в зависимости от типа модели
-            let output = `<h3>📋 Результат для ${capitalize(data.pokemon)}</h3>`;
-            
-            if (modelType === 'mlp' || modelType === 'cnn') {
-                output += `
-                    <p><strong>Предсказанный тип:</strong> ${capitalize(data.predicted_type)}</p>
-                    <p><strong>Уверенность:</strong> ${(data.confidence * 100).toFixed(1)}%</p>
-                `;
-            }
-            else if (modelType === 'rnn') {
-                output += `<p><strong>Предсказанные характеристики:</strong></p><ul>`;
-                Object.entries(data.predicted_stats).forEach(([key, val]) => {
-                    output += `<li>${key}: ${Math.round(val)}</li>`;
-                });
-                output += `</ul>`;
-            }
-            else if (modelType === 'autoencoder') {
-                const color = data.interpretation === 'нормальный' ? 'green' : 'orange';
-                output += `
-                    <p><strong>Оценка аномальности:</strong> ${data.anomaly_score.toFixed(4)}</p>
-                    <p><strong>Интерпретация:</strong> <span style="color:${color}">${data.interpretation}</span></p>
-                `;
-            }
-            else if (modelType === 'siamese') {
-                const similarityPercent = (data.similarity * 100).toFixed(1);
-                output += `
-                    <p><strong>Эталон:</strong> ${capitalize(data.reference)}</p>
-                    <p><strong>Сходство:</strong> ${similarityPercent}%</p>
-                    <p><strong>Интерпретация:</strong> ${data.interpretation}</p>
-                `;
-            }
-            
-            elements.predictResults.innerHTML = output;
-            
-        } catch (e) {
-            elements.predictResults.innerHTML = '<p style="color:red">❌ Ошибка запроса</p>';
+        } catch (error) {
+            console.error('❌ Ошибка обучения RNN:', error);
+            alert('Ошибка при обучении RNN модели: ' + error.message);
+        } finally {
+            trainRnnBtn.disabled = false;
+            trainRnnBtn.textContent = '🧠 Обучить RNN';
         }
     }
     
-    // === Поиск похожих (использует автоэнкодер) ===
+    /**
+     * Обучить Autoencoder модель
+     */
+    async function trainAE() {
+        if (!trainAeBtn) return;
+        
+        trainAeBtn.disabled = true;
+        trainAeBtn.textContent = '⏳ Обучение...';
+        
+        try {
+            const response = await fetch('/api/autoencoder/train', { method: 'POST' });
+            const result = await response.json();
+            
+            if (result.success) {
+                alert(
+                    `✅ Autoencoder модель обучена!\n\n` +
+                    `📊 Покемонов в обучении: ${result.samples}\n` +
+                    `🔄 Эпох: ${result.epochs}\n` +
+                    `📉 Финальная потеря: ${result.final_loss?.toFixed(4)}\n\n` +
+                    `💡 Теперь можно проверять "обычность" покемонов!`
+                );
+            } else {
+                let message = `⚠️ Ошибка обучения Autoencoder: ${result.reason || 'Неизвестная ошибка'}\n\n`;
+                if (result.current_count && result.required_count) {
+                    message += `📊 Сейчас в БД: ${result.current_count} покемонов\n`;
+                    message += `🎯 Нужно минимум: ${result.required_count}\n\n`;
+                    message += `💡 Нажмите "Добавить всех покемонов" и дождитесь завершения!`;
+                }
+                alert(message);
+            }
+        } catch (error) {
+            console.error('❌ Ошибка обучения Autoencoder:', error);
+            alert('Ошибка при обучении Autoencoder модели: ' + error.message);
+        } finally {
+            trainAeBtn.disabled = false;
+            trainAeBtn.textContent = '🔄 Обучить Autoencoder';
+        }
+    }
     
     /**
-     * Находит похожих покемонов
+     * Обучить MLP модель
      */
-    async function findSimilar() {
-        const name = elements.similarInput?.value.trim().toLowerCase();
+    async function trainMLP() {
+        if (!trainMlpBtn) return;
+        
+        trainMlpBtn.disabled = true;
+        trainMlpBtn.textContent = '⏳ Обучение...';
+        
+        try {
+            const response = await fetch('/api/mlp/train', { method: 'POST' });
+            const result = await response.json();
+            
+            if (result.success) {
+                alert(
+                    `✅ MLP модель обучена!\n\n` +
+                    `📊 Симулировано боёв: ${result.samples}\n` +
+                    `🔄 Эпох: ${result.epochs}\n` +
+                    `📈 Финальная точность: ${(result.final_accuracy * 100).toFixed(1)}%\n\n` +
+                    `💡 Теперь можно предсказывать вероятность победы!`
+                );
+            } else {
+                let message = `⚠️ Ошибка обучения MLP: ${result.reason || 'Неизвестная ошибка'}\n\n`;
+                if (result.current_count && result.required_count) {
+                    message += `📊 Сейчас в БД: ${result.current_count} покемонов\n`;
+                    message += `🎯 Нужно минимум: ${result.required_count}\n\n`;
+                    message += `💡 Нажмите "Добавить всех покемонов" и дождитесь завершения!`;
+                }
+                alert(message);
+            }
+        } catch (error) {
+            console.error('❌ Ошибка обучения MLP:', error);
+            alert('Ошибка при обучении MLP модели: ' + error.message);
+        } finally {
+            trainMlpBtn.disabled = false;
+            trainMlpBtn.textContent = '⚔️ Обучить MLP';
+        }
+    }
+    
+    /**
+     * Очистить все данные
+     */
+    async function clearAllData() {
+        try {
+            await fetch('/api/pokemon', { method: 'DELETE' });
+            loadPokemon();
+            alert('✅ Все данные удалены. Модели сброшены.');
+        } catch (error) {
+            console.error('❌ Ошибка очистки:', error);
+            alert('Ошибка при очистке данных: ' + error.message);
+        }
+    }
+    
+    /**
+     * Найти визуально похожих покемонов (CNN)
+     */
+    async function findSimilarCNN() {
+        const name = cnnInput?.value.trim().toLowerCase();
+        
         if (!name) {
-            alert('Введите имя покемона');
-            elements.similarInput?.focus();
+            alert('⚠️ Введите имя покемона!');
             return;
         }
         
-        elements.similarResults.innerHTML = '<p>🔍 Поиск в латентном пространстве...</p>';
-        elements.similarResults.classList.remove('hidden');
+        cnnLoading?.classList.remove('hidden');
+        cnnResults.classList.remove('hidden');
+        cnnResults.innerHTML = '<div class="loading-panel"><div class="spinner"></div><span>Поиск...</span></div>';
         
         try {
-            const res = await fetch(`/api/similar/${encodeURIComponent(name)}`);
-            const data = await res.json();
+            const response = await fetch(`/api/cnn/similar?name=${encodeURIComponent(name)}&k=5`);
+            const data = await response.json();
             
             if (data.error) {
-                elements.similarResults.innerHTML = `<p style="color:red">❌ ${data.error}</p>`;
+                cnnResults.innerHTML = `<p class="error">❌ ${data.error}</p>`;
                 return;
             }
+            
+            let html = `
+                <div class="result-card target-card">
+                    <div class="card-badge">🎯 Цель</div>
+                    <img src="${data.target.sprite_url || 'https://via.placeholder.com/96?text=No+Image'}" 
+                         alt="${data.target.name}" 
+                         class="sprite-img"
+                         onerror="this.src='https://via.placeholder.com/96?text=Error'">
+                    <div class="pokemon-name">${capitalize(data.target.name)}</div>
+                </div>
+            `;
             
             if (data.similar.length === 0) {
-                elements.similarResults.innerHTML = '<p>📭 Похожие покемоны не найдены</p>';
+                html += '<p class="text-center text-muted" style="grid-column: 1/-1;">Похожих не найдено. Обучите CNN модель сначала.</p>';
+            } else {
+                data.similar.forEach((pokemon, index) => {
+                    const similarityPercent = Math.round(pokemon.similarity * 100);
+                    const color = similarityPercent > 80 ? '#22c55e' : similarityPercent > 60 ? '#f59e0b' : '#ef4444';
+                    
+                    html += `
+                        <div class="result-card similar-card">
+                            <div class="rank-badge">#${index + 1}</div>
+                            <img src="${pokemon.sprite_url || 'https://via.placeholder.com/96?text=No+Image'}" 
+                                 alt="${pokemon.name}" 
+                                 class="sprite-img"
+                                 onerror="this.src='https://via.placeholder.com/96?text=Error'">
+                            <div class="pokemon-name">${capitalize(pokemon.name)}</div>
+                            <div class="similarity-meter">
+                                <span class="sim-label">Сходство:</span>
+                                <div class="sim-bar">
+                                    <div class="sim-fill" style="width: ${similarityPercent}%; background: ${color}"></div>
+                                </div>
+                                <span class="sim-value">${similarityPercent}%</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            cnnResults.innerHTML = html;
+            
+        } catch (error) {
+            console.error('❌ Ошибка CNN поиска:', error);
+            cnnResults.innerHTML = `<p class="error">❌ Ошибка: ${error.message}</p>`;
+        } finally {
+            cnnLoading?.classList.add('hidden');
+        }
+    }
+    
+    /**
+     * Классифицировать покемона по категории силы (RNN)
+     */
+    async function classifyPokemonRNN() {
+        const name = rnnInput?.value.trim().toLowerCase();
+        
+        if (!name) {
+            alert('⚠️ Введите имя покемона!');
+            return;
+        }
+        
+        rnnLoading?.classList.remove('hidden');
+        rnnResults.classList.remove('hidden');
+        rnnDistribution.classList.add('hidden');
+        rnnResults.innerHTML = '<div class="loading-panel"><div class="spinner"></div><span>Классификация...</span></div>';
+        
+        try {
+            const response = await fetch(`/api/rnn/classify?name=${encodeURIComponent(name)}`);
+            const data = await response.json();
+            
+            if (data.error) {
+                rnnResults.innerHTML = `<p class="error">❌ ${data.error}</p>`;
                 return;
             }
             
-            elements.similarResults.innerHTML = '';
+            const strengthClass = data.result.class;
+            const confidence = Math.round(data.result.confidence * 100);
             
-            data.similar.forEach((p, idx) => {
-                const card = document.createElement('div');
-                card.className = 'result-card';
-                card.style.animationDelay = `${idx * 0.1}s`;
-                
-                const similarityPercent = (p.similarity * 100).toFixed(1);
-                const barWidth = Math.min(100, p.similarity * 100);
-                
-                card.innerHTML = `
-                    <h3>${capitalize(p.name)}</h3>
-                    <div class="similarity-bar">
-                        <div class="similarity-fill" style="width: ${barWidth}%"></div>
+            let html = `
+                <div class="result-card target-card" style="grid-column: 1 / -1;">
+                    <div class="card-badge">${data.result.class_ru}</div>
+                    <img src="${data.pokemon.sprite_url || 'https://via.placeholder.com/96?text=No+Image'}" 
+                         alt="${data.pokemon.name}" 
+                         class="sprite-img"
+                         onerror="this.src='https://via.placeholder.com/96?text=Error'">
+                    <div class="pokemon-name">${capitalize(data.pokemon.name)}</div>
+                    <div class="strength-badge ${strengthClass}">${data.result.class_ru}</div>
+                    <div class="text-muted">BST: ${data.pokemon.bst}</div>
+                    <div class="text-muted">Уверенность: ${confidence}%</div>
+                    
+                    <div class="probability-bars">
+                        <div class="prob-item">
+                            <span class="prob-label">🔹 Слабый:</span>
+                            <div class="prob-bar"><div class="prob-fill" style="width: ${data.result.probabilities[0]*100}%; background: #3b82f6"></div></div>
+                            <span>${Math.round(data.result.probabilities[0]*100)}%</span>
+                        </div>
+                        <div class="prob-item">
+                            <span class="prob-label">🔸 Средний:</span>
+                            <div class="prob-bar"><div class="prob-fill" style="width: ${data.result.probabilities[1]*100}%; background: #f59e0b"></div></div>
+                            <span>${Math.round(data.result.probabilities[1]*100)}%</span>
+                        </div>
+                        <div class="prob-item">
+                            <span class="prob-label">🔴 Сильный:</span>
+                            <div class="prob-bar"><div class="prob-fill" style="width: ${data.result.probabilities[2]*100}%; background: #ef4444"></div></div>
+                            <span>${Math.round(data.result.probabilities[2]*100)}%</span>
+                        </div>
                     </div>
-                    <div class="score">${similarityPercent}% сходства</div>
-                    <small>Тип: ${p.types}</small><br>
-                    <small>HP: ${p.stats.hp} | ATK: ${p.stats.attack} | SPD: ${p.stats.speed}</small>
-                `;
-                elements.similarResults.appendChild(card);
-            });
+                </div>
+            `;
             
-        } catch (e) {
-            elements.similarResults.innerHTML = '<p style="color:red">❌ Ошибка запроса</p>';
+            rnnResults.innerHTML = html;
+            
+        } catch (error) {
+            console.error('❌ Ошибка RNN классификации:', error);
+            rnnResults.innerHTML = `<p class="error">❌ Ошибка: ${error.message}</p>`;
+        } finally {
+            rnnLoading?.classList.add('hidden');
         }
     }
     
-    // === Очистка данных ===
-    
     /**
-     * Очищает все данные из БД
+     * Показать распределение покемонов по классам силы (RNN)
      */
-    async function clearData() {
-        if (!confirm('⚠️ Вы уверены, что хотите удалить все данные и модели?')) return;
+    async function showRNNDistribution() {
+        rnnLoading?.classList.remove('hidden');
+        rnnDistribution.classList.remove('hidden');
+        rnnResults.classList.add('hidden');
         
         try {
-            const res = await fetch('/api/pokemon', { method: 'DELETE' });
-            if (res.ok) {
-                elements.tableBody.innerHTML = '';
-                elements.countDb.textContent = '0';
-                elements.similarResults.innerHTML = '';
-                elements.predictResults.innerHTML = '';
-                
-                // Сбрасываем статус моделей
-                if (elements.modelStatus) {
-                    elements.modelStatus.innerHTML = '<em>Модели сброшены</em>';
-                }
-                
-                alert('✅ Все данные и модели удалены');
-                checkModelsStatus();
-            } else {
-                throw new Error('Не удалось очистить данные');
-            }
-        } catch (e) {
-            alert('❌ Не удалось удалить данные');
+            const response = await fetch('/api/rnn/distribution');
+            const data = await response.json();
+            
+            const dist = data.distribution;
+            const pct = data.percentages;
+            
+            let html = `
+                <h3>📊 Распределение покемонов по силе</h3>
+                <p class="text-muted">Всего покемонов: ${data.total}</p>
+                <div class="distribution-chart">
+                    <div class="distribution-item">
+                        <div class="pokemon-name">🔹 Слабый</div>
+                        <div class="distribution-bar"><div class="distribution-fill weak" style="width: ${pct.weak}%"></div></div>
+                        <div><strong>${dist.weak}</strong> (${pct.weak}%)</div>
+                    </div>
+                    <div class="distribution-item">
+                        <div class="pokemon-name">🔸 Средний</div>
+                        <div class="distribution-bar"><div class="distribution-fill medium" style="width: ${pct.medium}%"></div></div>
+                        <div><strong>${dist.medium}</strong> (${pct.medium}%)</div>
+                    </div>
+                    <div class="distribution-item">
+                        <div class="pokemon-name">🔴 Сильный</div>
+                        <div class="distribution-bar"><div class="distribution-fill strong" style="width: ${pct.strong}%"></div></div>
+                        <div><strong>${dist.strong}</strong> (${pct.strong}%)</div>
+                    </div>
+                </div>
+            `;
+            
+            rnnDistribution.innerHTML = html;
+            
+        } catch (error) {
+            console.error('❌ Ошибка получения распределения:', error);
+            rnnDistribution.innerHTML = `<p class="error">❌ Ошибка: ${error.message}</p>`;
+        } finally {
+            rnnLoading?.classList.add('hidden');
         }
     }
-    
-    // === Визуализация ===
     
     /**
-     * Отображает график потерь при обучении
+     * Проверить "обычность" покемона через автоэнкодер (AE)
      */
-    function renderLossChart(history, modelType) {
-        if (!elements.chartCanvas || !history.train_loss) return;
+    async function checkPokemonOrdinariness() {
+        const name = aeInput?.value.trim().toLowerCase();
         
-        const ctx = elements.chartCanvas.getContext('2d');
-        const width = elements.chartCanvas.width;
-        const height = elements.chartCanvas.height;
-        
-        // Очистка
-        ctx.clearRect(0, 0, width, height);
-        
-        const trainLoss = history.train_loss;
-        const valLoss = history.val_loss || [];
-        const maxLoss = Math.max(...trainLoss, ...(valLoss.length ? valLoss : [1]));
-        
-        // Отрисовка осей
-        ctx.strokeStyle = '#ccc';
-        ctx.beginPath();
-        ctx.moveTo(40, 10);
-        ctx.lineTo(40, height - 30);
-        ctx.lineTo(width - 10, height - 30);
-        ctx.stroke();
-        
-        // Функция для преобразования координат
-        const toY = (loss) => height - 30 - (loss / maxLoss) * (height - 50);
-        const toX = (idx) => 40 + (idx / (trainLoss.length - 1)) * (width - 60);
-        
-        // График train loss
-        ctx.strokeStyle = '#667eea';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        trainLoss.forEach((loss, idx) => {
-            const x = toX(idx);
-            const y = toY(loss);
-            if (idx === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        });
-        ctx.stroke();
-        
-        // График val loss если есть
-        if (valLoss.length) {
-            ctx.strokeStyle = '#38ef7d';
-            ctx.beginPath();
-            valLoss.forEach((loss, idx) => {
-                const x = toX(idx);
-                const y = toY(loss);
-                if (idx === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            });
-            ctx.stroke();
+        if (!name) {
+            alert('⚠️ Введите имя покемона!');
+            return;
         }
         
-        // Легенда
-        ctx.fillStyle = '#667eea';
-        ctx.fillRect(width - 120, 10, 15, 15);
-        ctx.fillStyle = '#333';
-        ctx.font = '12px sans-serif';
-        ctx.fillText('Train', width - 100, 22);
+        aeLoading?.classList.remove('hidden');
+        aeResults.classList.remove('hidden');
+        aeStatistics.classList.add('hidden');
+        aeResults.innerHTML = '<div class="loading-panel"><div class="spinner"></div><span>Анализ...</span></div>';
         
-        if (valLoss.length) {
-            ctx.fillStyle = '#38ef7d';
-            ctx.fillRect(width - 120, 30, 15, 15);
-            ctx.fillStyle = '#333';
-            ctx.fillText('Validation', width - 100, 42);
+        try {
+            const response = await fetch(`/api/autoencoder/ordinariness?name=${encodeURIComponent(name)}`);
+            const data = await response.json();
+            
+            if (data.error) {
+                aeResults.innerHTML = `<p class="error">❌ ${data.error}</p>`;
+                return;
+            }
+            
+            const ord = data.result.ordinariness;
+            const colorClass = ord >= 80 ? 'ordinariness-high' : ord >= 60 ? 'ordinariness-medium' : 'ordinariness-low';
+            
+            let html = `
+                <div class="result-card ordinariness-card">
+                    <img src="${data.pokemon.sprite_url || 'https://via.placeholder.com/96?text=No+Image'}" 
+                         alt="${data.pokemon.name}" 
+                         class="sprite-img"
+                         onerror="this.src='https://via.placeholder.com/96?text=Error'">
+                    <div class="pokemon-name">${capitalize(data.pokemon.name)}</div>
+                    
+                    <div class="ordinariness-circle" style="--ordinariness: ${ord}%">
+                        <span class="ordinariness-value ${colorClass}">${ord}%</span>
+                        <span class="ordinariness-label">обычности</span>
+                    </div>
+                    
+                    <div class="ordinariness-description">
+                        ${data.result.description || ''}
+                    </div>
+                    
+                    <div class="text-muted mt-sm">
+                        Ошибка восстановления: ${data.result.reconstruction_error?.toFixed(4) || 'N/A'}
+                    </div>
+                </div>
+            `;
+            
+            aeResults.innerHTML = html;
+            
+        } catch (error) {
+            console.error('❌ Ошибка AE проверки:', error);
+            aeResults.innerHTML = `<p class="error">❌ Ошибка: ${error.message}</p>`;
+        } finally {
+            aeLoading?.classList.add('hidden');
         }
-        
-        // Заголовок
-        ctx.font = 'bold 14px sans-serif';
-        ctx.fillText(`Loss curve: ${modelType.toUpperCase()}`, 50, 25);
     }
     
-    // === Вспомогательные функции ===
+    /**
+     * Показать статистику по обычности всех покемонов (AE)
+     */
+    async function showAEStatistics() {
+        aeLoading?.classList.remove('hidden');
+        aeStatistics.classList.remove('hidden');
+        aeResults.classList.add('hidden');
+        
+        try {
+            const response = await fetch('/api/autoencoder/statistics');
+            const data = await response.json();
+            
+            if (data.message) {
+                aeStatistics.innerHTML = `<p class="text-center text-muted">${data.message}</p>`;
+                return;
+            }
+            
+            let html = `
+                <h3>📊 Статистика обычности покемонов</h3>
+                <p class="text-muted">Всего проанализировано: ${data.count}</p>
+                
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value ordinariness-high">${data.very_ordinary || 0}</div>
+                        <div class="stat-label">🟢 Очень обычные</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value ordinariness-medium">${data.ordinary || 0}</div>
+                        <div class="stat-label">🔵 Обычные</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${data.unusual || 0}</div>
+                        <div class="stat-label">🟡 Необычные</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value ordinariness-low">${data.rare || 0}</div>
+                        <div class="stat-label">🟠 Редкие</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value ordinariness-low">${data.unique || 0}</div>
+                        <div class="stat-label">🔴 Уникальные</div>
+                    </div>
+                </div>
+                
+                <div class="mt-md">
+                    <p><strong>Средняя обычность:</strong> ${data.mean}%</p>
+                    <p><strong>Медиана:</strong> ${data.median}%</p>
+                    <p><strong>Диапазон:</strong> ${data.min}% — ${data.max}%</p>
+                </div>
+            `;
+            
+            aeStatistics.innerHTML = html;
+            
+        } catch (error) {
+            console.error('❌ Ошибка получения статистики:', error);
+            aeStatistics.innerHTML = `<p class="error">❌ Ошибка: ${error.message}</p>`;
+        } finally {
+            aeLoading?.classList.add('hidden');
+        }
+    }
+    
+    /**
+     * Предсказать вероятность победы покемона (MLP)
+     */
+    async function predictWinProbability() {
+        const hp = parseFloat(mlpHpInput?.value) || 0;
+        const atk = parseFloat(mlpAtkInput?.value) || 0;
+        const def_ = parseFloat(mlpDefInput?.value) || 0;
+        const spd = parseFloat(mlpSpdInput?.value) || 0;
+        
+        if (hp <= 0 && atk <= 0 && def_ <= 0 && spd <= 0) {
+            alert('⚠️ Введите хотя бы одну характеристику!');
+            return;
+        }
+        
+        mlpLoading?.classList.remove('hidden');
+        mlpResults.classList.remove('hidden');
+        mlpResults.innerHTML = '<div class="loading-panel"><div class="spinner"></div><span>Расчёт...</span></div>';
+        
+        try {
+            const response = await fetch(
+                `/api/mlp/predict?hp=${hp}&atk=${atk}&def=${def_}&spd=${spd}`
+            );
+            const data = await response.json();
+            
+            if (data.error) {
+                mlpResults.innerHTML = `<p class="error">❌ ${data.error}</p>`;
+                return;
+            }
+            
+            const prob = data.result.win_probability;
+            const classification = data.result.classification || '';
+            
+            let colorClass = 'low';
+            let probabilityColor = '#ef4444';
+            if (prob >= 80) {
+                colorClass = 'high';
+                probabilityColor = '#22c55e';
+            } else if (prob >= 60) {
+                probabilityColor = '#22c55e';
+            } else if (prob >= 40) {
+                probabilityColor = '#f59e0b';
+            }
+            
+            let html = `
+                <div class="result-card win-probability-card">
+                    <div class="probability-circle" style="--probability: ${prob}%">
+                        <span class="probability-value" style="color: ${probabilityColor}">${prob}%</span>
+                        <span class="probability-label">победы</span>
+                    </div>
+                    
+                    <div class="probability-classification ${colorClass}">
+                        ${classification}
+                    </div>
+                    
+                    <div class="probability-description">
+                        ${data.result.description || ''}
+                    </div>
+                    
+                    <div class="probability-stats">
+                        <div class="prob-stat">
+                            <div class="prob-stat-value">${data.result.bst || 0}</div>
+                            <div class="prob-stat-label">BST</div>
+                        </div>
+                        <div class="prob-stat">
+                            <div class="prob-stat-value">${hp + atk + def_ + spd}</div>
+                            <div class="prob-stat-label">Сумма введённых</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            mlpResults.innerHTML = html;
+            
+        } catch (error) {
+            console.error('❌ Ошибка MLP предсказания:', error);
+            mlpResults.innerHTML = `<p class="error">❌ Ошибка: ${error.message}</p>`;
+        } finally {
+            mlpLoading?.classList.add('hidden');
+        }
+    }
+    
+    // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
     
     function showProgress(show) {
-        elements.progressContainer?.classList.toggle('hidden', !show);
+        if (!mainProgress) return;
+        if (show) {
+            mainProgress.classList.remove('hidden');
+        } else {
+            mainProgress.classList.add('hidden');
+        }
     }
     
-    function updateProgress(percent, text) {
-        if (elements.progressFill) elements.progressFill.style.width = `${percent}%`;
-        if (elements.progressText) elements.progressText.textContent = text;
-    }
-    
-    function setButtonsDisabled(disabled) {
-        Object.values(elements.trainBtns).forEach(btn => {
-            if (btn) btn.disabled = disabled;
-        });
-        if (elements.addAllBtn) elements.addAllBtn.disabled = disabled;
-        if (elements.clearBtn) elements.clearBtn.disabled = disabled;
+    function updateProgress(percent, label, percentText) {
+        if (!progressFill || !progressLabel || !progressPercent) return;
+        progressFill.style.width = `${percent}%`;
+        progressLabel.textContent = label;
+        progressPercent.textContent = percentText;
+        if (progressDetails) {
+            progressDetails.textContent = percentText;
+        }
     }
     
     function sleep(ms) {
@@ -634,7 +982,44 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function capitalize(str) {
-        if (!str) return '';
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
+    
+    async function loadAutocomplete() {
+        try {
+            const response = await fetch('/api/pokemon');
+            const pokemonList = await response.json();
+            
+            const oldDatalist = document.getElementById('pokemon-suggestions');
+            if (oldDatalist) {
+                oldDatalist.remove();
+            }
+            
+            const datalist = document.createElement('datalist');
+            datalist.id = 'pokemon-suggestions';
+            
+            pokemonList.forEach(p => {
+                const option = document.createElement('option');
+                option.value = p.name;
+                datalist.appendChild(option);
+            });
+            
+            document.body.appendChild(datalist);
+            
+            if (cnnInput) cnnInput.setAttribute('list', 'pokemon-suggestions');
+            if (rnnInput) rnnInput.setAttribute('list', 'pokemon-suggestions');
+            if (aeInput) aeInput.setAttribute('list', 'pokemon-suggestions');
+            
+            console.log(`✅ Автокомплит загружен (${pokemonList.length} покемонов)`);
+        } catch (e) {
+            console.warn('⚠️ Не удалось загрузить автокомплит:', e);
+        }
+    }
+    
+    console.log('✅ Все обработчики событий установлены');
+    console.log('🎮 Pokémon AI Search готов к работе!');
+    console.log('🖼️  CNN: Визуальный поиск похожих покемонов');
+    console.log('🧠 RNN: Классификация силы (слабый/средний/сильный)');
+    console.log('🔄 AE: Определение "обычности" покемона в %');
+    console.log('⚔️  MLP: Предсказание вероятности победы');
 });

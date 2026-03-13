@@ -1,181 +1,305 @@
 """
-Модуль обучения MLP.
+Модуль обучения MLP модели для предсказания вероятности победы.
 
-Особенности:
-- Поддержка как регрессии, так и классификации
-- Автоматический выбор функции потерь
-- Валидация на отложенной выборке
-- Сохранение лучшей модели по метрике
+Подход к обучению: Supervised Learning с симулированными боями.
+
+Генерация обучающих данных:
+1. Берём двух случайных покемонов из базы
+2. Сравниваем их BST (Base Stat Total)
+3. Добавляем элемент случайности (10-20% шанс на upset)
+4. Записываем результат (1 = победа, 0 = поражение)
+
+Это создаёт реалистичную модель боёв где статы важны, но не гарантируют победу.
 """
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import Dataset, DataLoader
 import numpy as np
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import List, Dict, Tuple, Optional
 
-from .model import PokemonMLP
+from config import MLP_CONFIG, TRAINING_CONFIG
+from database import PokemonDatabase
+from models.mlp.model import PokemonMLPClassifier
 
+
+# ==================== Константы ====================
+
+# Максимальные значения для нормализации статов
+MAX_STATS = {
+    'hp': 255,
+    'attack': 190,
+    'defense': 230,
+    'speed': 180
+}
+
+# Шанс на неожиданную победу (upset)
+UPSET_CHANCE = 0.15
+
+
+def calculate_bst(pokemon: Dict) -> int:
+    """Вычисляет сумму базовых характеристик."""
+    stats = [
+        pokemon.get('hp', 0),
+        pokemon.get('attack', 0),
+        pokemon.get('defense', 0),
+        pokemon.get('special_attack', 0) or pokemon.get('special-attack', 0),
+        pokemon.get('special_defense', 0) or pokemon.get('special-defense', 0),
+        pokemon.get('speed', 0)
+    ]
+    return sum(stats)
+
+
+def normalize_stats(hp: float, atk: float, def_: float, spd: float) -> np.ndarray:
+    """
+    Нормализует характеристики к диапазону [0, 1].
+    
+    Args:
+        hp, atk, def_, spd: Значения характеристик
+    
+    Returns:
+        np.ndarray: Нормализованный вектор [4]
+    """
+    return np.array([
+        min(hp / MAX_STATS['hp'], 1.0),
+        min(atk / MAX_STATS['attack'], 1.0),
+        min(def_ / MAX_STATS['defense'], 1.0),
+        min(spd / MAX_STATS['speed'], 1.0)
+    ], dtype=np.float32)
+
+
+def simulate_battle(pokemon1: Dict, pokemon2: Dict) -> int:
+    """
+    Симулирует бой между двумя покемонами.
+    
+    Логика:
+    - Сравниваем BST
+    - Добавляем случайность (upset chance)
+    
+    Returns:
+        int: 1 если pokemon1 победил, 0 иначе
+    """
+    bst1 = calculate_bst(pokemon1)
+    bst2 = calculate_bst(pokemon2)
+    
+    # Базовая вероятность победы на основе разницы BST
+    bst_diff = bst1 - bst2
+    base_win_prob = 0.5 + (bst_diff / 1000)  # Нормализация
+    base_win_prob = max(0.1, min(0.9, base_win_prob))
+    
+    # Добавляем случайность
+    if np.random.random() < UPSET_CHANCE:
+        return 1 - int(base_win_prob > 0.5)
+    
+    return 1 if np.random.random() < base_win_prob else 0
+
+
+# ==================== Dataset для PyTorch ====================
+
+class PokemonBattleDataset(Dataset):
+    """
+    Dataset для обучения MLP на симулированных боях.
+    
+    Возвращает:
+    - Нормализованные статы покемона [4]
+    - Результат боя (1 = победа, 0 = поражение)
+    """
+    
+    def __init__(self, pokemon_list: List[Dict], num_samples: int = 10000):
+        """
+        Args:
+            pokemon_list: Список покемонов для симуляции боёв
+            num_samples: Количество боёв для генерации
+        """
+        self.pokemon_list = pokemon_list
+        self.num_samples = num_samples
+        
+        # Генерируем обучающие данные
+        self.data = self._generate_battles()
+    
+    def _generate_battles(self) -> List[Tuple[np.ndarray, int]]:
+        """Генерирует симулированные бои."""
+        battles = []
+        
+        for _ in range(self.num_samples):
+            # Выбираем двух случайных покемонов
+            p1 = np.random.choice(self.pokemon_list)
+            p2 = np.random.choice(self.pokemon_list)
+            
+            # Нормализуем статы p1
+            stats = normalize_stats(
+                p1.get('hp', 50),
+                p1.get('attack', 50),
+                p1.get('defense', 50),
+                p1.get('speed', 50)
+            )
+            
+            # Симулируем бой
+            result = simulate_battle(p1, p2)
+            
+            battles.append((stats, result))
+        
+        return battles
+    
+    def __len__(self):
+        return len(self.data)
+    
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        stats, result = self.data[idx]
+        
+        stats_tensor = torch.FloatTensor(stats)
+        result_tensor = torch.FloatTensor([result])[0]
+        
+        return stats_tensor, result_tensor
+
+
+# ==================== Основной класс для обучения ====================
 
 class MLPTrainer:
     """
-    Тренер для MLP с поддержкой ранней остановки и сохранения чекпоинтов.
-    
-    Args:
-        model: Экземпляр PokemonMLP
-        task: 'regression' или 'classification'
-        lr: Скорость обучения
-        device: 'cpu' или 'cuda'
+    Класс-обертка для обучения MLP модели.
     """
     
-    def __init__(
-        self, 
-        model: PokemonMLP, 
-        task: str = 'regression',
-        lr: float = 0.001,
-        device: str = 'cpu'
-    ):
-        self.model = model.to(device)
-        self.task = task
-        self.device = device
+    def __init__(self, db: PokemonDatabase = None):
+        self.db = db or PokemonDatabase()
+        self.device = torch.device(TRAINING_CONFIG['device'])
+        self.config = MLP_CONFIG
         
-        # Автоматический выбор функции потерь
-        if task == 'regression':
-            self.criterion = nn.MSELoss()
-        else:
-            self.criterion = nn.CrossEntropyLoss() if model.network[-1].__class__.__name__ != 'Softmax' else nn.NLLLoss()
+        # Инициализация модели
+        self.model = PokemonMLPClassifier(
+            input_dim=self.config.get('input_dim', 4),
+            hidden_dims=self.config.get('hidden_layers', [64, 32, 16]),
+            dropout=self.config.get('dropout', 0.3)
+        ).to(self.device)
         
-        self.optimizer = optim.Adam(model.parameters(), lr=lr)
-        self.best_loss = float('inf')
-        
-    def train_epoch(self, loader: DataLoader) -> float:
-        """
-        Один эпизод обучения.
-        
-        Returns:
-            float: средний loss за эпоху
-        """
-        self.model.train()
-        total_loss = 0
-        
-        for X_batch, y_batch in loader:
-            X_batch, y_batch = X_batch.to(self.device), y_batch.to(self.device)
-            
-            # Обнуляем градиенты
-            self.optimizer.zero_grad()
-            
-            # Прямой проход
-            predictions = self.model(X_batch)
-            
-            # Для классификации с softmax нужен log для NLLLoss
-            if self.task == 'classification' and self.model.network[-1].__class__.__name__ == 'Softmax':
-                predictions = torch.log(predictions + 1e-8)  # Защита от log(0)
-            
-            # Вычисляем loss
-            loss = self.criterion(predictions, y_batch)
-            
-            # Обратный проход
-            loss.backward()
-            self.optimizer.step()
-            
-            total_loss += loss.item()
-        
-        return total_loss / len(loader)
+        # Оптимизатор и функция потерь
+        self.optimizer = optim.Adam(
+            self.model.parameters(),
+            lr=self.config.get('learning_rate', 0.001)
+        )
+        self.criterion = nn.BCELoss()  # Binary Cross Entropy для вероятности
+        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(
+            self.optimizer,
+            T_max=self.config.get('epochs', 30)
+        )
     
-    def validate(self, loader: DataLoader) -> float:
+    def train(self, pokemon_list: List[Dict] = None, verbose: bool = True) -> dict:
         """
-        Валидация модели.
-        
-        Returns:
-            float: средний loss на валидации
-        """
-        self.model.eval()
-        total_loss = 0
-        
-        with torch.no_grad():
-            for X_batch, y_batch in loader:
-                X_batch, y_batch = X_batch.to(self.device), y_batch.to(self.device)
-                predictions = self.model(X_batch)
-                
-                if self.task == 'classification' and self.model.network[-1].__class__.__name__ == 'Softmax':
-                    predictions = torch.log(predictions + 1e-8)
-                
-                loss = self.criterion(predictions, y_batch)
-                total_loss += loss.item()
-        
-        return total_loss / len(loader)
-    
-    def fit(
-        self, 
-        X_train: np.ndarray, 
-        y_train: np.ndarray,
-        X_val: Optional[np.ndarray] = None,
-        y_val: Optional[np.ndarray] = None,
-        epochs: int = 100,
-        batch_size: int = 32,
-        patience: int = 10,
-        save_path: str = 'mlp_model.pth'
-    ) -> dict:
-        """
-        Полный цикл обучения.
+        Запускает процесс обучения модели.
         
         Args:
-            X_train, y_train: Обучающая выборка
-            X_val, y_val: Валидационная выборка (опционально)
-            epochs: Количество эпох
-            batch_size: Размер батча
-            patience: Ранняя остановка, если нет улучшений
-            save_path: Путь для сохранения лучшей модели
-            
+            pokemon_list: Список покемонов для генерации боёв
+            verbose: Выводить ли прогресс
+        
         Returns:
-            dict: история обучения { 'train_loss': [...], 'val_loss': [...] }
+            dict: Статистика обучения
         """
-        # Создаём DataLoader
-        train_dataset = TensorDataset(
-            torch.FloatTensor(X_train), 
-            torch.FloatTensor(y_train) if self.task == 'regression' else torch.LongTensor(y_train)
+        if pokemon_list is None:
+            pokemon_list = self.db.get_all_pokemon()
+        
+        # Фильтруем покемонов с достаточными данными
+        pokemon_list = [p for p in pokemon_list if p.get('hp') is not None]
+        
+        min_samples = self.config.get('min_samples', 50)
+        if len(pokemon_list) < min_samples:
+            print(f"⚠️ Недостаточно данных: {len(pokemon_list)} < {min_samples}")
+            return {
+                'success': False,
+                'reason': 'insufficient_data',
+                'current_count': len(pokemon_list),
+                'required_count': min_samples
+            }
+        
+        if verbose:
+            print(f"🎯 Начало обучения MLP на {len(pokemon_list)} покемонах...")
+            print(f"📊 Генерация {self.config.get('num_battles', 10000)} симулированных боёв")
+        
+        # Подготовка DataLoader
+        dataset = PokemonBattleDataset(
+            pokemon_list, 
+            num_samples=self.config.get('num_battles', 10000)
         )
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+        dataloader = DataLoader(
+            dataset,
+            batch_size=self.config.get('batch_size', 32),
+            shuffle=True,
+            num_workers=0,
+            drop_last=True
+        )
         
-        history = {'train_loss': [], 'val_loss': []}
-        no_improve = 0
+        self.model.train()
+        loss_history = []
+        acc_history = []
         
-        print(f"🚀 Начало обучения MLP ({self.task})...")
+        # ==================== Цикл обучения ====================
+        epochs = self.config.get('epochs', 30)
         
         for epoch in range(epochs):
-            # Обучение
-            train_loss = self.train_epoch(train_loader)
-            history['train_loss'].append(train_loss)
+            epoch_loss = 0.0
+            correct = 0
+            total = 0
             
-            # Валидация
-            if X_val is not None:
-                val_dataset = TensorDataset(
-                    torch.FloatTensor(X_val),
-                    torch.FloatTensor(y_val) if self.task == 'regression' else torch.LongTensor(y_val)
-                )
-                val_loader = DataLoader(val_dataset, batch_size=batch_size)
-                val_loss = self.validate(val_loader)
-                history['val_loss'].append(val_loss)
+            for stats, labels in dataloader:
+                stats = stats.to(self.device)
+                labels = labels.to(self.device)
                 
-                # Ранняя остановка
-                if val_loss < self.best_loss:
-                    self.best_loss = val_loss
-                    torch.save(self.model.state_dict(), save_path)
-                    no_improve = 0
-                    print(f"  Epoch {epoch+1}: val_loss={val_loss:.4f} ✅ (сохранено)")
-                else:
-                    no_improve += 1
-                    print(f"  Epoch {epoch+1}: val_loss={val_loss:.4f}")
-                    
-                if no_improve >= patience:
-                    print(f"⏹ Ранняя остановка на эпохе {epoch+1}")
-                    break
-            else:
-                # Без валидации сохраняем последнюю модель
-                torch.save(self.model.state_dict(), save_path)
-                print(f"  Epoch {epoch+1}: train_loss={train_loss:.4f}")
+                # Прямой проход
+                predictions = self.model(stats).squeeze()
+                
+                # Вычисление потерь
+                loss = self.criterion(predictions, labels)
+                
+                # Обратный проход
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
+                
+                # Статистика
+                epoch_loss += loss.item()
+                predicted_classes = (predictions >= 0.5).float()
+                correct += (predicted_classes == labels).sum().item()
+                total += labels.size(0)
+            
+            self.scheduler.step()
+            
+            avg_loss = epoch_loss / len(dataloader)
+            accuracy = correct / total
+            loss_history.append(avg_loss)
+            acc_history.append(accuracy)
+            
+            if verbose and (epoch + 1) % 5 == 0:
+                print(f"  Эпоха {epoch+1}/{epochs}, Loss: {avg_loss:.4f}, Acc: {accuracy:.2%}")
         
-        print(f"✅ Обучение завершено. Лучший val_loss: {self.best_loss:.4f}")
-        return history
+        # ==================== Сохранение модели ====================
+        model_path = self.config.get('model_path', Path('models/mlp/mlp_model.pth'))
+        model_path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(self.model.state_dict(), model_path)
+        
+        if verbose:
+            print(f"✅ Модель сохранена в {model_path}")
+            print(f"📈 Финальная точность: {acc_history[-1]:.2%}")
+        
+        return {
+            'success': True,
+            'epochs': epochs,
+            'samples': len(dataset),
+            'pokemon_count': len(pokemon_list),
+            'final_loss': loss_history[-1],
+            'final_accuracy': acc_history[-1],
+            'loss_history': loss_history,
+            'accuracy_history': acc_history
+        }
+    
+    def load_model(self, model_path: str = None):
+        """Загружает предобученные веса модели."""
+        path = model_path or self.config.get('model_path', Path('models/mlp/mlp_model.pth'))
+        
+        if not path.exists():
+            print(f"⚠️ Файл модели не найден: {path}")
+            return False
+        
+        self.model.load_state_dict(torch.load(path, map_location=self.device))
+        self.model.eval()
+        print(f"✅ MLP модель загружена из {path}")
+        return True

@@ -1,93 +1,119 @@
 """
-CNN (Convolutional Neural Network) для классификации покемонов.
+Архитектура сверточной нейросети (CNN) для извлечения визуальных признаков покемонов.
 
-Применение:
-- Классификация типа покемона на основе его характеристик, 
-  представленных как "изображение" 8×4
+Эта сеть работает как "энкодер": она принимает изображение спрайта покемона
+и преобразует его в компактный вектор (эмбеддинг), который сохраняет
+визуальные особенности: форму, цвета, пропорции.
 
-Архитектура:
-Вход (1, 8, 4) → Conv(16, 3×3) → ReLU → MaxPool → Conv(32, 3×3) → ReLU → 
-Flatten → Dense(64) → ReLU → Output(18 классов типов)
-
-Почему это работает:
-Хотя данные табличные, свёртки могут выявлять локальные паттерны 
-во взаимосвязях характеристик (напр. "высокий attack + низкий defense").
+Для поиска похожих покемонов мы сравниваем эти векторы через косинусное сходство.
 """
-
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
-class PokemonCNN(nn.Module):
+class PokemonCNNEncoder(nn.Module):
     """
-    Сверточная сеть для классификации типов покемонов.
+    Сверточная нейросеть для кодирования изображений покемонов.
     
-    Входные данные должны быть предварительно reshaped в (batch, 1, H, W).
+    Архитектура:
+    1. Несколько сверточных слоев с пулингом для извлечения признаков
+    2. Полносвязные слои для сжатия в эмбеддинг
+    3. BatchNorm и Dropout для регуляризации
+    
+    Вход: Изображение 64x64x3 (RGB)
+    Выход: Вектор размерности embedding_dim (по умолчанию 32)
     """
     
-    def __init__(
-        self, 
-        input_channels: int = 1,
-        input_size: tuple = (8, 4),  # Высота, Ширина "изображения"
-        num_classes: int = 18,  # Количество типов покемонов
-        dropout_rate: float = 0.3
-    ):
-        super(PokemonCNN, self).__init__()
-        
-        # Первый сверточный блок
-        self.conv1 = nn.Sequential(
-            nn.Conv2d(input_channels, 16, kernel_size=3, padding=1),  # Сохраняем размер
-            nn.ReLU(),
-            nn.BatchNorm2d(16),  # Стабилизация обучения
-            nn.MaxPool2d(2)  # Уменьшаем размер в 2 раза: (8,4) -> (4,2)
-        )
-        
-        # Второй сверточный блок
-        self.conv2 = nn.Sequential(
-            nn.Conv2d(16, 32, kernel_size=3, padding=1),
-            nn.ReLU(),
-            nn.BatchNorm2d(32),
-            nn.MaxPool2d(2)  # (4,2) -> (2,1)
-        )
-        
-        # Полносвязные слои после свёрток
-        # После двух пулингов: 32 канала × 2 × 1 = 64 признака
-        self.fc = nn.Sequential(
-            nn.Linear(32 * 2 * 1, 64),
-            nn.ReLU(),
-            nn.Dropout(dropout_rate),
-            nn.Linear(64, num_classes),
-            nn.Softmax(dim=1)  # Выход: вероятности по классам
-        )
-        
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def __init__(self, input_channels: int = 3, embedding_dim: int = 32):
         """
-        Прямой проход.
+        Инициализация архитектуры сети.
         
         Args:
-            x: Тензор формы (batch, 1, 8, 4)
-            
-        Returns:
-            torch.Tensor: вероятности классов (batch, 18)
+            input_channels: Количество каналов входного изображения (3 для RGB)
+            embedding_dim: Размерность выходного векторного представления
         """
-        x = self.conv1(x)
-        x = self.conv2(x)
+        super(PokemonCNNEncoder, self).__init__()
         
-        # Flatten перед полносвязными слоями
-        x = x.view(x.size(0), -1)
+        # ==================== Блок 1: Извлечение низкоуровневых признаков ====================
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(input_channels, 16, kernel_size=3, padding=1),  # 64x64 -> 64x64
+            nn.BatchNorm2d(16),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2, 2),                                        # 64x64 -> 32x32
+            nn.Dropout(0.1)
+        )
         
-        return self.fc(x)
+        # ==================== Блок 2: Извлечение среднеуровневых признаков ====================
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(16, 32, kernel_size=3, padding=1),  # 32x32 -> 32x32
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2, 2),                           # 32x32 -> 16x16
+            nn.Dropout(0.2)
+        )
+        
+        # ==================== Блок 3: Извлечение высокоуровневых признаков ====================
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),  # 16x16 -> 16x16
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2, 2),                           # 16x16 -> 8x8
+            nn.Dropout(0.3)
+        )
+        
+        # ==================== Полносвязные слои для сжатия в эмбеддинг ====================
+        self.fc1 = nn.Sequential(
+            nn.Linear(64 * 8 * 8, 128),  # Сжимаем 4096 -> 128
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.4)
+        )
+        
+        # Финальный слой: проекция в пространство эмбеддингов
+        self.embedding = nn.Linear(128, embedding_dim)  # 128 -> embedding_dim
+        
+        # Инициализация весов для стабильности обучения
+        self._initialize_weights()
     
-    def predict_type(self, x: torch.Tensor) -> tuple:
+    def _initialize_weights(self):
+        """Инициализация весов методом Kaiming (рекомендуется для ReLU)."""
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.ones_(m.weight)
+                nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.zeros_(m.bias)
+    
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
-        Предсказывает тип покемона.
+        Прямой проход через сеть.
+        
+        Args:
+            x: Тензор изображения размера [batch_size, channels, height, width]
         
         Returns:
-            Tuple: (индекс класса, имя типа)
+            torch.Tensor: Вектор эмбеддинга размера [batch_size, embedding_dim]
         """
-        from utils.preprocessing import POKEMON_TYPES
+        x = self.conv1(x)  # [B, 3, 64, 64] -> [B, 16, 32, 32]
+        x = self.conv2(x)  # [B, 16, 32, 32] -> [B, 32, 16, 16]
+        x = self.conv3(x)  # [B, 32, 16, 16] -> [B, 64, 8, 8]
         
+        x = x.view(x.size(0), -1)  # [B, 64, 8, 8] -> [B, 4096]
+        
+        x = self.fc1(x)            # [B, 4096] -> [B, 128]
+        
+        embedding = self.embedding(x)  # [B, 128] -> [B, embedding_dim]
+        
+        return embedding
+    
+    def get_embedding(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Удобный метод для получения эмбеддинга без градиентов (для инференса).
+        """
         with torch.no_grad():
-            probs = self.forward(x)
-            idx = torch.argmax(probs, dim=1).item()
-            return idx, POKEMON_TYPES[idx]
+            return self.forward(x)

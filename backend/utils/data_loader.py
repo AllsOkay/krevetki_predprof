@@ -132,7 +132,7 @@ def prepare_features(df: pd.DataFrame) -> Tuple[np.ndarray, Dict]:
         'min': min_v,
         'max': max_v,
         'range': range_v,
-        'numeric_cols': NUMERIC_TYPES,
+        'numeric_cols': NUMERIC_FEATURES,
         'type_cols': POKEMON_TYPES
     }
     

@@ -78,6 +78,37 @@ def prepare_for_rnn(X: np.ndarray, sequence_length: int = 5) -> torch.Tensor:
     
     return torch.FloatTensor(np.array(sequences))
 
+def prepare_single_sequence_for_rnn(X_part: np.ndarray, target_sequence_length: int, mean_values: np.ndarray) -> torch.Tensor:
+    """
+    Подготавливает один кусок данных (X_part) как последовательность фиксированной длины
+    для подачи в RNN. При необходимости добавляет паддинг со средними значениями в начало.
+
+    Args:
+        X_part (np.ndarray): Часть данных формы (<= target_sequence_length, feature_dim)
+        target_sequence_length (int): Желаемая длина последовательности
+        mean_values (np.ndarray): Массив средних значений для каждого признака формы (feature_dim,)
+
+    Returns:
+        torch.Tensor: Тензор формы (1, target_sequence_length, feature_dim)
+    """
+    current_len, feature_dim = X_part.shape
+    if current_len > target_sequence_length:
+        # Если последовательность длиннее, используем последние target_sequence_length
+        X_padded = X_part[-target_sequence_length:]
+    elif current_len < target_sequence_length:
+        # Если короче, добавляем паддинг со средними значениями в начало
+        pad_len = target_sequence_length - current_len
+        # Создаём массив, заполненный средними значениями, размером (pad_len, feature_dim)
+        padding = np.tile(mean_values, (pad_len, 1))
+        X_padded = np.vstack([padding, X_part])
+    else:
+        # Если длина совпадает
+        X_padded = X_part
+
+    # Добавляем размерность батча
+    X_final = X_padded[np.newaxis, :, :] # (1, target_sequence_length, feature_dim)
+    return torch.FloatTensor(X_final)
+
 
 def prepare_for_autoencoder(X: np.ndarray) -> torch.Tensor:
     """

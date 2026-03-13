@@ -74,12 +74,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // Поддержка Enter в полях ввода
-    elements.pokemonInput?.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') predictWithModel('mlp');
-    });
-    elements.similarInput?.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') findSimilar();
-    });
+   elements.pokemonInput?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        const selectedModel = document.getElementById('model-select').value;
+        predictWithModel(selectedModel);
+    }
+});
     
     // === Основные функции ===
     

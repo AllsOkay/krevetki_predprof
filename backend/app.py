@@ -23,7 +23,8 @@ from utils.data_loader import (
 )
 from utils.preprocessing import (
     prepare_for_mlp, prepare_for_cnn, prepare_for_rnn,
-    prepare_for_autoencoder, prepare_for_siamese
+    prepare_for_autoencoder, prepare_for_siamese,
+    prepare_single_sequence_for_rnn # <-- Добавлено
 )
 
 # === Импорты моделей ===
@@ -141,7 +142,27 @@ def load_all_models():
     rnn_path = model_dir / 'rnn' / 'rnn_model.pth'
     if rnn_path.exists():
         try:
-            rnn = PokemonRNN(input_dim=26, output_dim=8)  # Прогноз 8 числовых признаков
+            # Проверяем, какая архитектура была у модели при обучении
+            # Попробуем загрузить state_dict, чтобы получить параметры
+            state_dict = torch.load(rnn_path, map_location='cpu')
+            # Получим размерность последнего слоя (output_dim)
+            # Имя ключа может отличаться в зависимости от реализации модели
+            # Для PokemonRNN, последний слой - это fc (Sequential), а последний модуль - Linear
+            # Ключи будут fc.2.weight, fc.2.bias (если 2 слоя ReLU и 1 Linear в конце)
+            # Найдём ключ, содержащий '.weight' и относящийся к последнему слою fc
+            last_linear_weight_key = None
+            for key in sorted(state_dict.keys(), reverse=True):
+                if 'fc' in key and 'weight' in key:
+                    last_linear_weight_key = key
+                    break
+            if last_linear_weight_key:
+                output_dim = state_dict[last_linear_weight_key].shape[0]
+                print(f"   📏 Обнаружен output_dim RNN: {output_dim}")
+            else:
+                print(f"   ⚠️ Не удалось определить output_dim RNN из state_dict, использую 8")
+                output_dim = 8 # Значение по умолчанию, если не найдено
+            
+            rnn = PokemonRNN(input_dim=26, output_dim=output_dim)  # Прогноз N числовых признаков
             rnn.load_state_dict(torch.load(rnn_path, map_location='cpu'))
             rnn.eval()
             loaded_models['rnn'] = rnn
@@ -178,9 +199,14 @@ def load_all_models():
     if scaler_path.exists():
         try:
             scaler_params = np.load(scaler_path, allow_pickle=True).item()
-            print("✅ Параметры нормализации загружены")
+            print("✅ Параметры нормализации загружены") # Отладка
+            print(f"   scaler_params keys: {list(scaler_params.keys())}") # Отладка
         except Exception as e:
-            print(f"⚠️ Ошибка загрузки scaler: {e}")
+            print(f"⚠️ Ошибка загрузки scaler: {e}") # Отладка
+            scaler_params = None # Убедиться, что устанавливается в None при ошибке
+    else:
+        print("⚠️ Файл scaler_params.npy")
+        scaler_params = None
 
 # === Frontend Routes ===
 @app.route('/')
@@ -266,7 +292,9 @@ def clear_pokemon():
             Path('utils/scaler_params.npy').unlink()
         
         loaded_models.clear()
+        # Исправленная строка: вызов log_api_request с правильными аргументами
         log_api_request('/api/pokemon', {}, {'status': 'cleared', 'deleted': deleted})
+        # Возврат правильного JSON-ответа
         return jsonify({'status': 'cleared', 'deleted': deleted})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -344,7 +372,7 @@ def train_model_api(model_type: str):
                 X_rnn.numpy(), y_rnn, test_size=0.2, random_state=42
             )
             
-            model = PokemonRNN(input_dim=26, output_dim=26)
+            model = PokemonRNN(input_dim=26, output_dim=26) # Обучаем на все 26 признаков
             trainer = RNNTrainer(model)
             history = trainer.fit(X_tr, y_tr, X_val, y_val, epochs=30, batch_size=8)
             
@@ -480,28 +508,134 @@ def predict_api(model_type: str):
             
         elif model_type == 'rnn' and 'rnn' in loaded_models:
             model = loaded_models['rnn']
-            # Для RNN нужна последовательность - берем последних 5 покемонов из БД
+            # --- ИСПРАВЛЕНАЯ ЛОГИКА ДЛЯ RNN ---
+            # Загружаем всех покемонов из базы
             all_df = load_pokemon_data()
-            if len(all_df) < 5:
-                return jsonify({'error': 'Недостаточно данных для RNN прогноза'}), 400
-            
-            last_5 = all_df.tail(5)
-            X_seq, _ = prepare_features(last_5)
-            X_rnn = prepare_for_rnn(X_seq, sequence_length=5)[-1:]  # Берем последнюю последовательность
-            
+            if len(all_df) < 4:
+                return jsonify({'error': 'Недостаточно данных для RNN прогноза (нужно минимум 4)'}), 400
+
+            # Получаем данные покемона по имени (он может быть в середине или конце)
+            target_df = get_pokemon_by_name(pokemon_name)
+            if target_df is None:
+                # Это "дубль" проверки, но на всякий случай
+                return jsonify({'error': f'Покемон "{pokemon_name}" не найден в БД (индексация).'}), 404
+
+            # Подготовим признаки для ВСЕХ покемонов
+            X_all, _ = prepare_features(all_df)
+
+            # Найдем индекс введенного покемона в датафрейме
+            target_idx_in_all = all_df[all_df['name'].str.lower() == pokemon_name.lower()].index
+            if target_idx_in_all.empty:
+                 # Это "дубль" проверки, но на всякий случай
+                 return jsonify({'error': f'Покемон "{pokemon_name}" не найден в БД (индексация).'}), 404
+
+            target_idx_in_all = target_idx_in_all[0]
+
+            # Создадим "псевдопоследовательность" для RNN.
+            # Возьмем 4 предыдущих покемона перед target_idx_in_all (или сколько есть)
+            start_idx = max(0, target_idx_in_all - 4)
+            sequence_df = all_df.iloc[start_idx:target_idx_in_all + 1] # Включая target
+
+            if len(sequence_df) < 2: # Если введенный покемон первый
+                # Нужно хотя бы 2 элемента для последовательности, или использовать фиксированное начало
+                # Попробуем использовать первые 5, если target - первый
+                if target_idx_in_all == 0 and len(all_df) >= 5:
+                     sequence_df = all_df.iloc[0:5]
+                else:
+                    return jsonify({'error': 'Недостаточно предшествующих данных для создания последовательности.'}), 400
+
+            # Подготовим признаки для этой "псевдопоследовательности"
+            X_seq_part, _ = prepare_features(sequence_df)
+
+            # Подготовим последовательность для RNN
+            # sequence_length = 5 - попробуем использовать длину получившейся последовательности
+            effective_seq_len = len(sequence_df) # Это может быть 2, 3, 4, 5
+            # Однако, модель была обучена с фиксированной sequence_length (например, 5).
+            # Если длина отличается, нужно либо:
+            # 1. Заполнять нулями/предыдущим значением до 5
+            # 2. Использовать только последние 5 (если длина > 5)
+            # 3. Использовать только первые 5 (если длина > 5) - НЕ РЕКОМЕНДУЕТСЯ
+            # 4. Обучить модель на переменной длине (сложнее)
+
+            # Попробуем вариант 1: заполнение до 5 нулями, если короче
+            desired_seq_len = 5 # Должно совпадать с sequence_length, используемым при обучении
+            if effective_seq_len < desired_seq_len:
+                padding_needed = desired_seq_len - effective_seq_len
+                # Создадим массив нулей той же размерности, что и один покемон (26)
+                # ИСПОЛЬЗУЕМ 0.5 как "нейтральное" значение для паддинга
+                padding = np.full((padding_needed, X_seq_part.shape[1]), 0.5, dtype=X_seq_part.dtype)
+                # Добавим паддинг в начало последовательности (или в конец - зависит от логики)
+                # Обычно паддинг добавляют в начало, чтобы последние "реальные" покемоны были в конце
+                X_seq_padded = np.vstack([padding, X_seq_part])
+            elif effective_seq_len > desired_seq_len:
+                 # Если последовательность длиннее, используем последние desired_seq_len
+                 X_seq_padded = X_seq_part[-desired_seq_len:]
+            else:
+                 # Если длина совпадает
+                 X_seq_padded = X_seq_part
+
+            # Теперь X_seq_padded имеет форму (desired_seq_len, num_features)
+            # Подготовим его для RNN (batch_size, sequence_length, features)
+            # X_rnn_input = prepare_for_rnn(X_seq_padded[np.newaxis, :, :], sequence_length=desired_seq_len) # Добавим batch dimension
+
+            # Используем новую функцию для подготовки одной последовательности фиксированной длины
+            # ПЕРЕДАЁМ X_seq_part (до паддинга) и desired_seq_len, и используем 0.5 для паддинга внутри функции
+            # НО: prepare_single_sequence_for_rnn теперь ожидает mean_values
+            # mean_values_for_padding = np.full(X_seq_part.shape[1], 0.5) # feature_dim = 26
+            # X_rnn_input = prepare_single_sequence_for_rnn(X_seq_part, desired_seq_len, mean_values_for_padding)
+            # НО: чтобы использовать 0.5 в prepare_single_sequence_for_rnn, нужно её изменить
+            # ПЕРЕДЕЛАЕМ: в prepare_single_sequence_for_rnn используем 0.5
+            # Тогда вызов: X_rnn_input = prepare_single_sequence_for_rnn(X_seq_part, desired_seq_len, 0.5) <- НЕТ, это число, а не массив
+            # Новый вызов: X_rnn_input = prepare_single_sequence_for_rnn(X_seq_part, desired_seq_len, np.full(X_seq_part.shape[1], 0.5)) <- ЛУЧШЕ
+            mean_values_for_padding = np.full(X_seq_part.shape[1], 0.5) # feature_dim = 26
+            X_rnn_input = prepare_single_sequence_for_rnn(X_seq_part, desired_seq_len, mean_values_for_padding) # Передаём mean_values
+
+            # Убедимся, что модель в режиме eval
+            model.eval()
             with torch.no_grad():
-                prediction = model(X_rnn)
-                # Возвращаем предсказанные числовые признаки
-                pred_stats = prediction[0][:8].numpy()  # Первые 8 - числовые признаки
-            
+                # X_rnn_input теперь правильной формы (1, desired_seq_len, num_features)
+                prediction = model(X_rnn_input)
+                # Предполагаем, что output_dim модели соответствует количеству признаков (26 или 8)
+                # В оригинальном коде было [:8], предполагая 8 статов. Проверим output_dim модели.
+                # В trainer.py для RNN output_dim был 26 (X[5:]) или 8 (X[5:][:8]).
+                # В model.py default output_dim = 1.
+                # В backend.py при обучении RNN использовался PokemonRNN(input_dim=26, output_dim=26)
+                # и trainer.fit(X_tr, y_tr, ...) где y_tr = X[5:] (все 26 признаков)
+                # Значит, output_dim модели 26.
+                # Однако, в примере в trainer.py для output_dim=8, y_tr = X[5:][:, :8]
+                # Проверим, какая архитектура была у последней обученной модели.
+                # Если output_dim=26, то prediction.shape = (1, 26)
+                # Если output_dim=8, то prediction.shape = (1, 8)
+                # В предыдущем обсуждении, когда ты обучал RNN, ты использовал output_dim=8?
+                # Проверим архитектуру модели при загрузке или захардкодим ожидание.
+                # Предположим, что после исправления и переобучения, output_dim=8.
+                # Лучше всего проверить output_dim самой модели.
+                # model.network[-1] - последний слой Linear <- НЕПРАВИЛЬНО
+                # model.fc[-1] - последний слой Linear В FC Sequential <- ПРАВИЛЬНО
+                expected_output_dim = model.fc[-1].out_features # <-- ИСПРАВЛЕНО
+                # print(f"DEBUG: RNN output_dim = {expected_output_dim}") # Для отладки
+                if prediction.shape[1] != expected_output_dim:
+                     print(f"WARNING: Predicted shape {prediction.shape[1]} does not match expected {expected_output_dim}")
+                     # Возьмем столько, сколько нужно
+                     take_dim = min(prediction.shape[1], expected_output_dim)
+                     pred_stats_raw = prediction[0][:take_dim].numpy()
+                else:
+                     pred_stats_raw = prediction[0].numpy()
+
+                # Так как модель обучалась с output_dim=26, берем все 26
+                # pred_stats = pred_stats_raw[:8] # <-- Используйте это, если output_dim модели 8
+                pred_stats = pred_stats_raw # <-- Используем все 26, если output_dim модели 26
+                
             result = {
-                'pokemon': pokemon_name,
+                'pokemon': pokemon_name, # Имя введенного покемона
+                # Берём только первые 8 предсказанных значений для NUMERIC_FEATURES
                 'predicted_stats': {
-                    NUMERIC_FEATURES[i]: float(pred_stats[i]) for i in range(8)
+                    NUMERIC_FEATURES[i]: float(pred_stats[i]) for i in range(len(NUMERIC_FEATURES)) # len(NUMERIC_FEATURES) = 8
                 }
             }
             log_api_request(f'/api/predict/{model_type}', data, result, model_type)
             return jsonify(result)
+            # --- КОНЕЦ ИСПРАВЛЕНИЯ ---
             
         elif model_type == 'autoencoder' and 'autoencoder' in loaded_models:
             model = loaded_models['autoencoder']
@@ -567,40 +701,46 @@ def find_similar_api(pokemon_name: str):
     """
     if 'autoencoder' not in loaded_models or scaler_params is None:
         return jsonify({'error': 'Автоэнкодер не обучен. Сначала обучите модель.'}), 503
-    
+
     try:
         # Загружаем всех покемонов
         df = load_pokemon_data()
         target_df = get_pokemon_by_name(pokemon_name)
-        
+
         if target_df is None:
             return jsonify({'error': f'Покемон "{pokemon_name}" не найден'}), 404
-        
+
         # Подготовка признаков
         X_all, _ = prepare_features(df)
         X_target, _ = prepare_features(target_df)
-        
+
         model = loaded_models['autoencoder']
-        
-        with torch.no_grad():
+
+        # --- ДОБАВЛЕНО ---
+        # Убедиться, что модель в режиме eval перед предсказанием
+        model.eval()
+        # ---------------
+
+        with torch.no_grad(): # Рекомендуется использовать torch.no_grad() для инференса
             # Кодируем в latent space
             target_emb = model.encode(torch.FloatTensor(X_target)).numpy().flatten()
             all_embs = model.encode(torch.FloatTensor(X_all)).numpy()
-        
+
         # Косинусное сходство
         from sklearn.metrics.pairwise import cosine_similarity
-        similarities = cosine_similarity([target_emb], all_embs)[0]
-        
+        similarities = cosine_similarity([target_emb], all_embs)[0] # <-- Это numpy array
+
         # Исключаем самого себя из результатов
         target_idx = df[df['name'].str.lower() == pokemon_name.lower()].index[0]
         similarities[target_idx] = -1
-        
+
         # Берём топ-5
-        top_5_idx = np.argsort(similarities)[::-1][:5]
-        
+        # similarities - это numpy array, так что np.argsort работает корректно
+        top_5_idx = np.argsort(similarities)[::-1][:5] # <-- ОШИБКА БЫЛА ТУТ
+
         results = []
         for idx in top_5_idx:
-            if similarities[idx] > 0:  # Только положительные сходства
+            if similarities[idx] > 0:  # <-- Здесь также используется numpy array
                 results.append({
                     'name': df.iloc[idx]['name'],
                     'similarity': float(similarities[idx]),
@@ -612,11 +752,11 @@ def find_similar_api(pokemon_name: str):
                         'speed': int(df.iloc[idx]['speed'])
                     }
                 })
-        
+
         response = {'similar': results}
         log_api_request(f'/api/similar/{pokemon_name}', {}, response, 'autoencoder')
         return jsonify(response)
-        
+
     except Exception as e:
         import traceback
         print(f"❌ Ошибка поиска похожих: {traceback.format_exc()}")

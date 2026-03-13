@@ -50,7 +50,6 @@ def add_pokemon():
     if not data or 'id' not in data or 'name' not in data:
         return jsonify({'error': 'Missing id or name'}), 400
     
-    # Добавляем URL спрайта если есть
     if 'sprite_url' not in data:
         import requests
         try:
@@ -68,10 +67,8 @@ def add_pokemon():
 def clear_pokemon():
     """Очистить все данные."""
     db.clear_all()
-    
     if CNN_CONFIG['model_path'].exists():
         CNN_CONFIG['model_path'].unlink()
-    
     return jsonify({'status': 'cleared'})
 
 # ==================== CNN Module Routes ====================
@@ -80,21 +77,13 @@ def clear_pokemon():
 def train_cnn():
     """Запустить обучение CNN модели."""
     from models.cnn.trainer import CNNTrainer
-    
     trainer = CNNTrainer(db)
     result = trainer.train(verbose=True)
-    
     return jsonify(result)
 
 @app.route('/api/cnn/similar', methods=['GET'])
 def find_similar_cnn():
-    """
-    Найти визуально похожих покемонов.
-    
-    Query params:
-        name: имя покемона (обязательно)
-        k: количество результатов (по умолчанию 5)
-    """
+    """Найти визуально похожих покемонов."""
     name = request.args.get('name', '').strip().lower()
     top_k = int(request.args.get('k', 5))
     
@@ -120,43 +109,31 @@ def find_similar_cnn():
         'similar': similar
     })
 
-    # Добавить после CNN routes:
-
 # ==================== RNN Module Routes ====================
-
 
 @app.route('/api/rnn/train', methods=['POST'])
 def train_rnn():
     """Запустить обучение RNN модели."""
-    # ✅ Импорты без префикса 'backend.'
     from models.rnn.trainer import RNNTrainer
-    
     trainer = RNNTrainer(db)
     result = trainer.train(verbose=True)
-    
     return jsonify(result)
 
 @app.route('/api/rnn/classify', methods=['GET'])
 def classify_pokemon_rnn():
-    """
-    Классифицировать покемона по категории силы.
-    """
+    """Классифицировать покемона по категории силы."""
     name = request.args.get('name', '').strip().lower()
-    
     if not name:
         return jsonify({'error': 'Parameter "name" is required'}), 400
     
-    # ✅ Импорты без префикса 'backend.'
     from models.rnn.predictor import RNNPredictor
     predictor = RNNPredictor(db)
-    
     result = predictor.classify(name)
     
     if not result:
         return jsonify({'error': f'Pokemon "{name}" not found'}), 404
     
     pokemon = db.get_pokemon_by_name(name)
-    
     return jsonify({
         'pokemon': {
             'name': pokemon['name'],
@@ -169,16 +146,9 @@ def classify_pokemon_rnn():
 @app.route('/api/rnn/distribution', methods=['GET'])
 def get_rnn_distribution():
     """Получить распределение покемонов по классам силы."""
-    # ✅ Импорты без префикса 'backend.'
     from models.rnn.predictor import RNNPredictor
     predictor = RNNPredictor(db)
-    
-    distribution = predictor.get_distribution()
-    
-    return jsonify(distribution)
-
-
-# Добавить после RNN routes:
+    return jsonify(predictor.get_distribution())
 
 # ==================== Autoencoder Module Routes ====================
 
@@ -186,45 +156,25 @@ def get_rnn_distribution():
 def train_autoencoder():
     """Запустить обучение автоэнкодера."""
     from models.autoencoder.trainer import AETrainer
-    
     trainer = AETrainer(db)
     result = trainer.train(verbose=True)
-    
     return jsonify(result)
 
 @app.route('/api/autoencoder/ordinariness', methods=['GET'])
 def get_ordinariness():
-    """
-    Получить "обычность" покемона в процентах.
-    
-    Query params:
-        name: имя покемона (обязательно)
-    
-    Response:
-    {
-        "pokemon": {"name": "pikachu", "sprite_url": "..."},
-        "result": {
-            "ordinariness": 75.3,
-            "reconstruction_error": 0.0234,
-            "description": "🔵 Обычный (типичные характеристики)"
-        }
-    }
-    """
+    """Получить "обычность" покемона в процентах."""
     name = request.args.get('name', '').strip().lower()
-    
     if not name:
         return jsonify({'error': 'Parameter "name" is required'}), 400
     
     from models.autoencoder.predictor import AEPredictor
     predictor = AEPredictor(db)
-    
     result = predictor.get_ordinariness(name)
     
     if not result:
         return jsonify({'error': f'Pokemon "{name}" not found'}), 404
     
     pokemon = db.get_pokemon_by_name(name)
-    
     return jsonify({
         'pokemon': {
             'name': pokemon['name'],
@@ -238,13 +188,7 @@ def get_ae_statistics():
     """Получить статистику по обычности всех покемонов."""
     from models.autoencoder.predictor import AEPredictor
     predictor = AEPredictor(db)
-    
-    stats = predictor.get_statistics()
-    
-    return jsonify(stats)
-
-
-# Добавить после Autoencoder routes:
+    return jsonify(predictor.get_statistics())
 
 # ==================== MLP Module Routes ====================
 
@@ -252,34 +196,13 @@ def get_ae_statistics():
 def train_mlp():
     """Запустить обучение MLP модели."""
     from models.mlp.trainer import MLPTrainer
-    
     trainer = MLPTrainer(db)
     result = trainer.train(verbose=True)
-    
     return jsonify(result)
 
 @app.route('/api/mlp/predict', methods=['GET'])
 def predict_win_probability():
-    """
-    Предсказать вероятность победы покемона.
-    
-    Query params:
-        hp: HP характеристика (обязательно)
-        atk: ATK характеристика (обязательно)
-        def: DEF характеристика (обязательно)
-        spd: SPD характеристика (обязательно)
-    
-    Response:
-    {
-        "input": {"hp": 50, "atk": 60, "def": 50, "spd": 70},
-        "result": {
-            "win_probability": 65.3,
-            "bst": 230,
-            "classification": "🔵 Выше среднего",
-            "description": "Хорошие шансы..."
-        }
-    }
-    """
+    """Предсказать вероятность победы покемона."""
     try:
         hp = float(request.args.get('hp', 0))
         atk = float(request.args.get('atk', 0))
@@ -293,19 +216,13 @@ def predict_win_probability():
     
     from models.mlp.predictor import MLPPredictor
     predictor = MLPPredictor(db)
-    
     result = predictor.predict_win_probability(hp, atk, def_, spd)
     
     if not result:
         return jsonify({'error': 'Prediction failed'}), 500
     
     return jsonify({
-        'input': {
-            'hp': hp,
-            'atk': atk,
-            'def': def_,
-            'spd': spd
-        },
+        'input': {'hp': hp, 'atk': atk, 'def': def_, 'spd': spd},
         'result': result
     })
 
@@ -314,12 +231,86 @@ def get_mlp_stats():
     """Получить статистику по предсказаниям MLP."""
     from models.mlp.predictor import MLPPredictor
     predictor = MLPPredictor(db)
-    
-    # Пример статистики
     return jsonify({
         'model_loaded': predictor.model_loaded,
         'input_features': ['HP', 'ATK', 'DEF', 'SPD'],
         'output': 'Win Probability (0-100%)'
+    })
+
+# ==================== Training Metrics Routes ====================
+
+@app.route('/api/metrics/<model_type>', methods=['GET'])
+def get_training_metrics(model_type):
+    """Получить метрики обучения для указанной модели."""
+    valid_types = ['cnn', 'rnn', 'autoencoder', 'mlp']
+    if model_type not in valid_types:
+        return jsonify({'error': f'Invalid model_type. Valid: {valid_types}'}), 400
+    
+    metrics = db.get_training_metrics(model_type)
+    
+    if not metrics:
+        return jsonify({
+            'model_type': model_type,
+            'metrics': [],
+            'summary': {'message': 'No training data found'}
+        })
+    
+    summary = {
+        'total_epochs': len(metrics),
+        'final_loss': metrics[-1].get('loss') if metrics else None,
+        'final_accuracy': metrics[-1].get('accuracy') if metrics else None,
+        'trained_at': metrics[-1].get('trained_at') if metrics else None
+    }
+    
+    return jsonify({
+        'model_type': model_type,
+        'metrics': metrics,
+        'summary': summary
+    })
+
+@app.route('/api/metrics/3d/<model_type>', methods=['GET'])
+def get_training_metrics_3d(model_type):
+    """Получить данные для 3D визуализации обучения."""
+    valid_types = ['cnn', 'rnn', 'autoencoder', 'mlp']
+    if model_type not in valid_types:
+        return jsonify({'error': f'Invalid model_type'}), 400
+    
+    metrics = db.get_training_metrics(model_type)
+    
+    if not metrics:
+        return jsonify({'error': 'No training data found'}), 404
+    
+    data_3d = {
+        'x': [m['epoch'] for m in metrics],
+        'y': [m['loss'] or 0 for m in metrics],
+        'z': [m['accuracy'] or m.get('metric_value', 0) for m in metrics],
+        'text': [f"Epoch {m['epoch']}: Loss={m['loss']:.4f}" + 
+                (f", Acc={m['accuracy']:.2%}" if m['accuracy'] else "") 
+                for m in metrics],
+        'epoch': [m['epoch'] for m in metrics],
+        'loss': [m['loss'] for m in metrics],
+        'accuracy': [m['accuracy'] for m in metrics]
+    }
+    
+    axis_hints = {
+        'cnn': {'y': 'Contrastive Loss', 'z': 'Embedding Distance'},
+        'rnn': {'y': 'Cross-Entropy Loss', 'z': 'Classification Accuracy'},
+        'autoencoder': {'y': 'Reconstruction MSE', 'z': 'Ordinariness Score'},
+        'mlp': {'y': 'Binary Cross-Entropy', 'z': 'Win Prediction Accuracy'}
+    }
+    
+    layout_hints = {
+        'x_title': 'Эпоха обучения',
+        'y_title': axis_hints.get(model_type, {}).get('y', 'Loss'),
+        'z_title': axis_hints.get(model_type, {}).get('z', 'Metric'),
+        'color_scale': 'Viridis',
+        'marker_size': 5
+    }
+    
+    return jsonify({
+        'model_type': model_type,
+        'data_3d': data_3d,
+        'layout_hints': layout_hints
     })
 
 # ==================== Health Check ====================
@@ -343,6 +334,4 @@ if __name__ == '__main__':
     
     print("🚀 Backend запущен: http://localhost:5000")
     print("📊 Health check: http://localhost:5000/api/health")
-    print("🖼️  CNN similar: http://localhost:5000/api/cnn/similar?name=pikachu")
-    
     app.run(debug=True, port=5000)

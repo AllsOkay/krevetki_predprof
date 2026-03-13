@@ -377,6 +377,42 @@ MLP_CONFIG = {
     'upset_chance': 0.15,
 }
 
+# Добавить после других конфигов:
+
+# Настройки визуализации обучения
+GRAPH_CONFIG = {
+    # Цветовые схемы для разных метрик
+    'colors': {
+        'loss': '#667eea',
+        'accuracy': '#22c55e',
+        'reconstruction': '#f59e0b',
+        'ordinariness': '#8b5cf6'
+    },
+    
+    # Настройки 3D визуализации
+    'plotly_3d': {
+        'camera_default': {'eye': {'x': 1.5, 'y': 1.5, 'z': 1.5}},
+        'colorscale': 'Viridis',
+        'marker_size': 4,
+        'line_width': 2
+    },
+    
+    # Настройки 2D графиков
+    'chartjs_2d': {
+        'tension': 0.4,  # Плавность линий
+        'point_radius': 3,
+        'fill_opacity': 0.1
+    },
+    
+    # Метки осей для разных моделей
+    'axis_labels': {
+        'cnn': {'y': 'Contrastive Loss', 'z': 'Embedding Distance'},
+        'rnn': {'y': 'Cross-Entropy Loss', 'z': 'Accuracy'},
+        'autoencoder': {'y': 'Reconstruction MSE', 'z': 'Ordinariness'},
+        'mlp': {'y': 'Binary Cross-Entropy', 'z': 'Win Probability'}
+    }
+}
+
 
 # ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 

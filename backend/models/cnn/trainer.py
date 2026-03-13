@@ -224,6 +224,22 @@ class CNNTrainer:
             
             if verbose and (epoch + 1) % 5 == 0:
                 print(f"  Эпоха {epoch+1}/{self.config['epochs']}, Loss: {avg_loss:.4f}")
+
+            # В конце метода train(), после сохранения модели:
+
+            # ==================== Сохранение метрик в БД ====================
+            metrics_for_db = []
+            for epoch, loss in enumerate(loss_history, start=1):
+                metrics_for_db.append({
+                    'epoch': epoch,
+                    'loss': float(loss),
+                    'accuracy': None,  # CNN не имеет accuracy в contrastive learning
+                    'metric_name': 'contrastive_loss',
+                    'metric_value': float(loss)
+                })
+
+            self.db.save_training_metrics('cnn', metrics_for_db)
+            print(f"📊 Метрики обучения сохранены в БД ({len(metrics_for_db)} записей)")
         
         model_path = self.config['model_path']
         model_path.parent.mkdir(parents=True, exist_ok=True)

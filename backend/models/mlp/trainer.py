@@ -270,6 +270,19 @@ class MLPTrainer:
             
             if verbose and (epoch + 1) % 5 == 0:
                 print(f"  Эпоха {epoch+1}/{epochs}, Loss: {avg_loss:.4f}, Acc: {accuracy:.2%}")
+
+            # В конце метода train():
+            metrics_for_db = []
+            for epoch, (loss, acc) in enumerate(zip(loss_history, acc_history), start=1):
+                metrics_for_db.append({
+                    'epoch': epoch,
+                    'loss': float(loss),
+                    'accuracy': float(acc),
+                    'metric_name': 'win_prediction',
+                    'metric_value': float(acc)
+                })
+
+            self.db.save_training_metrics('mlp', metrics_for_db)
         
         # ==================== Сохранение модели ====================
         model_path = self.config.get('model_path', Path('models/mlp/mlp_model.pth'))

@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateProgress(0, 'Загрузка...');
         
         try {
-            const limit = 1302;
+            const limit = 1026;
             const res = await fetch(`https://pokeapi.co/api/v2/pokemon?limit=${limit}`);
             const data = await res.json();
             

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon AI Search</title>
+    <link rel="stylesheet" href="css.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🧠 Pokémon AI Similarity</h1>
+        
+        <div class="controls">
+            <button id="add-all-btn">➕ Добавить всех покемонов</button>
+            <button id="train-btn" class="secondary">🎓 Обучить нейросеть</button>
+            <button id="clear-btn" class="danger">🗑️ Очистить всё</button>
+        </div>
+
+        <div class="search-section">
+            <h2>🔍 Найти похожих</h2>
+            <div class="search-box">
+                <input type="text" id="similar-input" placeholder="Имя покемона (напр. pikachu)">
+                <button id="find-similar-btn">Найти</button>
+            </div>
+            <div id="similar-results" class="results-grid hidden"></div>
+        </div>
+        
+        <div class="progress-container hidden" id="progress-container">
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+            <span id="progress-text">Загрузка...</span>
+        </div>
+        
+        <div class="table-container">
+            <h3>📊 База данных (<span id="count-db">0</span>)</h3>
+            <table id="pokemon-table">
+                <thead>
+                    <tr>
+                        <th>id</th><th>name</th><th>types</th><th>hp</th><th>atk</th><th>def</th><th>speed</th>
+                    </tr>
+                </thead>
+                <tbody id="pokemon-table-body"></tbody>
+            </table>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

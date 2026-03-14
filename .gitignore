@@ -1,5 +1,5 @@
 pokemon.ddb
-model.pth
+model.ppth
 scaler.pkl
 
 __pycache__/

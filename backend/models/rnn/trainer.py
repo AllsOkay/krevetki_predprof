@@ -167,6 +167,20 @@ class RNNTrainer:
             if verbose and (epoch + 1) % 5 == 0:
                 print(f"  Эпоха {epoch+1}/{epochs}, Loss: {avg_loss:.4f}, Acc: {accuracy:.2%}")
         
+        # ✅ ВАЖНО: Сохранение метрик в БД (этого не было!)
+        metrics_for_db = []
+        for epoch, (loss, acc) in enumerate(zip(loss_history, acc_history), start=1):
+            metrics_for_db.append({
+                'epoch': epoch,
+                'loss': float(loss),
+                'accuracy': float(acc),
+                'metric_name': 'classification',
+                'metric_value': float(acc)
+            })
+        
+        self.db.save_training_metrics('rnn', metrics_for_db)
+        print(f"📊 Метрики обучения сохранены в БД ({len(metrics_for_db)} записей)")
+        
         # Сохранение модели
         model_path = self.config.get('model_path', Path('models/rnn/rnn_model.pth'))
         model_path.parent.mkdir(parents=True, exist_ok=True)

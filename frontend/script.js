@@ -1,12 +1,13 @@
 /**
  * 🦐 Pokémon AI Search - Shrimp Style
  * Минималистичная версия с адаптацией под мобильные
+ * Версия: 2.0 - Исправления графиков и Autoencoder
  */
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🦐 Shrimp Style загружен');
     
-    // DOM Элементы
+    // ==================== DOM ЭЛЕМЕНТЫ ====================
     const addAllBtn = document.getElementById('add-all-btn');
     const trainCnnBtn = document.getElementById('train-cnn-btn');
     const trainRnnBtn = document.getElementById('train-rnn-btn');
@@ -57,17 +58,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusText = document.getElementById('status-text');
     const statusDot = document.querySelector('.status-dot');
     
+    // Переменные для графиков
     let chart2d = null;
     let currentModelType = 'cnn';
     let currentView = '2d';
     
-    // Инициализация
+    // Маппинг типов моделей к реальным ID кнопок
+    const modelBtnMap = {
+        'cnn': 'train-cnn-btn',
+        'rnn': 'train-rnn-btn',
+        'autoencoder': 'train-ae-btn',
+        'mlp': 'train-mlp-btn'
+    };
+    
+    const modelIcons = {
+        'cnn': '🎓',
+        'rnn': '🧠',
+        'autoencoder': '🔄',
+        'mlp': '⚔️'
+    };
+    
+    // ==================== ИНИЦИАЛИЗАЦИЯ ====================
     checkServerHealth();
     loadPokemon();
     loadAutocomplete();
     loadTrainingGraph();
     
-    // Обработчики
+    // ==================== ОБРАБОТЧИКИ СОБЫТИЙ ====================
+    
     if (addAllBtn) addAllBtn.addEventListener('click', addAllPokemon);
     if (trainCnnBtn) trainCnnBtn.addEventListener('click', () => trainModel('cnn'));
     if (trainRnnBtn) trainRnnBtn.addEventListener('click', () => trainModel('rnn'));
@@ -87,7 +105,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (mlpPredictBtn) mlpPredictBtn.addEventListener('click', predictWinProbability);
     
-    if (graphModelSelect) graphModelSelect.addEventListener('change', e => { currentModelType = e.target.value; loadTrainingGraph(); });
+    if (graphModelSelect) graphModelSelect.addEventListener('change', e => { 
+        currentModelType = e.target.value; 
+        loadTrainingGraph(); 
+    });
+    
     if (view2dBtn) view2dBtn.addEventListener('click', () => switchGraphView('2d'));
     if (view3dBtn) view3dBtn.addEventListener('click', () => switchGraphView('3d'));
     if (refreshGraphBtn) refreshGraphBtn.addEventListener('click', () => {
@@ -95,21 +117,22 @@ document.addEventListener('DOMContentLoaded', () => {
         loadTrainingGraph();
     });
     
-    // Функции
+    // ==================== ФУНКЦИИ ====================
+    
     async function checkServerHealth() {
         try {
             const res = await fetch('/api/health');
             const data = await res.json();
             if (data.status === 'ok') {
                 statusText.textContent = `OK (${data.pokemon_count || 0})`;
-                statusDot.classList.add('connected');
+                statusDot?.classList.add('connected');
             } else {
                 statusText.textContent = 'Ошибка';
-                statusDot.classList.remove('connected');
+                statusDot?.classList.remove('connected');
             }
         } catch (e) {
             statusText.textContent = 'Нет связи';
-            statusDot.classList.remove('connected');
+            statusDot?.classList.remove('connected');
         }
     }
     
@@ -134,11 +157,11 @@ document.addEventListener('DOMContentLoaded', () => {
     async function addAllPokemon() {
         if (!addAllBtn) return;
         addAllBtn.disabled = true;
-        progress.classList.remove('hidden');
+        progress?.classList.remove('hidden');
         updateProgress(0, 'Загрузка...');
         
         try {
-            const limit = 1026;
+            const limit = 1302;
             const res = await fetch(`https://pokeapi.co/api/v2/pokemon?limit=${limit}`);
             const data = await res.json();
             
@@ -178,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             updateProgress(100, `✅ ${success}`);
             loadPokemon();
-            setTimeout(() => progress.classList.add('hidden'), 2000);
+            setTimeout(() => progress?.classList.add('hidden'), 2000);
         } catch (e) {
             alert('Ошибка: ' + e.message);
         } finally {
@@ -187,72 +210,61 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function updateProgress(percent, text) {
-        progressFill.style.width = `${percent}%`;
-        progressText.textContent = `${percent}% ${text}`;
+        if (progressFill) progressFill.style.width = `${percent}%`;
+        if (progressText) progressText.textContent = `${percent}% ${text}`;
     }
     
     async function trainModel(type) {
-        const btn = document.getElementById(`train-${type}-btn`);
-        if (!btn) return;
-        
-        // Маппинг типов к ID кнопок
-        const btnIds = {
-            'cnn': 'train-cnn-btn',
-            'rnn': 'train-rnn-btn',
-            'autoencoder': 'train-ae-btn',
-            'mlp': 'train-mlp-btn'
-        };
+        const btnId = modelBtnMap[type];
+        const btn = document.getElementById(btnId);
+        if (!btn) {
+            console.error(`❌ Кнопка ${btnId} не найдена`);
+            alert(`Ошибка: кнопка "${type}" не найдена`);
+            return;
+        }
         
         btn.disabled = true;
         btn.textContent = '⏳';
         
         try {
-            console.log(`📡 Отправка POST запроса: /api/${type}/train`);
+            console.log(`📡 Отправка POST: /api/${type}/train`);
             const res = await fetch(`/api/${type}/train`, { method: 'POST' });
-            console.log(`📥 Ответ сервера: ${res.status} ${res.statusText}`);
+            console.log(`📥 Ответ: ${res.status}`);
             
             const result = await res.json();
-            console.log('📦 Данные ответа:', result);
+            console.log('📦 Результат:', result);
             
             if (result.success) {
                 let message = `✅ ${type.toUpperCase()} обучена!\nЭпох: ${result.epochs}`;
-                
                 if (result.final_loss !== undefined && result.final_loss !== null) {
                     message += `\nLoss: ${result.final_loss.toFixed(4)}`;
                 }
                 if (result.final_accuracy !== undefined && result.final_accuracy !== null) {
                     message += `\nТочность: ${(result.final_accuracy * 100).toFixed(1)}%`;
                 }
-                
-                alert(message + '\n\n💡 График обучения открыт ниже');
+                alert(message + '\n\n💡 График обучения ниже');
                 showGraphSection(type);
             } else {
-                console.warn('⚠️ Ошибка от сервера:', result);
-                let errorMsg = `⚠️ Ошибка: ${result.reason || 'Неизвестная ошибка'}`;
+                let errorMsg = `⚠️ Ошибка: ${result.reason || 'Неизвестная'}`;
                 if (result.current_count && result.required_count) {
-                    errorMsg += `\n\n📊 В БД: ${result.current_count} покемонов`;
-                    errorMsg += `\n🎯 Нужно минимум: ${result.required_count}`;
+                    errorMsg += `\n\n📊 В БД: ${result.current_count} | Нужно: ${result.required_count}`;
                 }
                 alert(errorMsg);
             }
         } catch (e) {
-            console.error(`❌ Ошибка обучения ${type}:`, e);
+            console.error(`❌ Ошибка ${type}:`, e);
             alert(`Ошибка: ${e.message}`);
         } finally {
             btn.disabled = false;
-            const icons = { cnn: '🎓', rnn: '🧠', autoencoder: '🔄', mlp: '⚔️' };
-            btn.textContent = icons[type] || '🔄';
+            btn.textContent = modelIcons[type] || '🔄';
         }
     }
     
     function showGraphSection(modelType) {
-        if (graphSection) {
-            graphSection.classList.remove('hidden');
-            currentModelType = modelType;
-            if (graphModelSelect) graphModelSelect.value = modelType;
-            loadTrainingGraph();
-            graphSection.scrollIntoView({ behavior: 'smooth' });
-        }
+        currentModelType = modelType;
+        if (graphModelSelect) graphModelSelect.value = modelType;
+        loadTrainingGraph();
+        graphSection?.scrollIntoView({ behavior: 'smooth' });
     }
     
     function switchGraphView(view) {
@@ -261,105 +273,108 @@ document.addEventListener('DOMContentLoaded', () => {
         if (view3dBtn) view3dBtn.classList.toggle('active', view === '3d');
         
         if (view === '2d') {
-            if (graph2dContainer) graph2dContainer.classList.remove('hidden');
-            if (graph3dContainer) graph3dContainer.classList.add('hidden');
+            graph2dContainer?.classList.remove('hidden');
+            graph3dContainer?.classList.add('hidden');
             loadGraph2D();
         } else {
-            if (graph2dContainer) graph2dContainer.classList.add('hidden');
-            if (graph3dContainer) graph3dContainer.classList.remove('hidden');
+            graph2dContainer?.classList.add('hidden');
+            graph3dContainer?.classList.remove('hidden');
             loadGraph3D();
         }
     }
     
     async function loadTrainingGraph() {
-        if (graphLoading) graphLoading.classList.remove('hidden');
+        graphLoading?.classList.remove('hidden');
         
         try {
-            console.log(`📊 Загрузка графика для: ${currentModelType}`);
+            console.log(`📊 Загрузка графика: ${currentModelType}`);
             
-            // Загружаем 2D метрики
-            const m1 = await fetch(`/api/metrics/${currentModelType}`);
-            console.log(`2D статус: ${m1.status}`);
-            
-            if (!m1.ok) {
-                throw new Error(`2D метрики: HTTP ${m1.status}`);
-            }
+            const [m1, m2] = await Promise.all([
+                fetch(`/api/metrics/${currentModelType}`),
+                fetch(`/api/metrics/3d/${currentModelType}`)
+            ]);
             
             const data = await m1.json();
-            console.log('📦 Данные 2D:', data);
+            console.log('📦 2D данные:', data);
             
-            // Проверяем наличие данных
+            // Нет данных — показываем заглушку
             if (!data.metrics || data.metrics.length === 0) {
                 if (graphStats) {
-                    graphStats.innerHTML = `
-                        <p class="text-muted">
-                            Нет данных обучения для <strong>${currentModelType.toUpperCase()}</strong>.
-                            <br>Обучите модель, чтобы увидеть график.
-                        </p>`;
+                    graphStats.innerHTML = `<p class="text-muted">Нет данных для <strong>${currentModelType.toUpperCase()}</strong>.<br>Обучите модель.</p>`;
                 }
                 showGraphPlaceholder('2d', `Нет данных для ${currentModelType.toUpperCase()}`);
                 showGraphPlaceholder('3d', `Нет данных для ${currentModelType.toUpperCase()}`);
-                if (graphLoading) graphLoading.classList.add('hidden');
+                if (chart2d && typeof Chart !== 'undefined') { chart2d.destroy(); chart2d = null; }
+                if (typeof Plotly !== 'undefined') Plotly.purge('training-chart-3d');
                 return;
             }
             
-            // Обновить статистику
-            if (data.summary) {
-                updateGraphStats(data.summary, currentModelType);
-            }
+            // Есть данные — обновляем
+            if (data.summary) updateGraphStats(data.summary, currentModelType);
             
-            // Отрисовать 2D график
             if (currentView === '2d') {
                 loadGraph2D(data.metrics, currentModelType);
-            }
-            
-            // 3D график - опционально (может не быть на сервере)
-            if (currentView === '3d') {
-                try {
-                    const m2 = await fetch(`/api/metrics/3d/${currentModelType}`);
-                    console.log(`3D статус: ${m2.status}`);
-                    
-                    if (m2.ok) {
-                        const data3d = await m2.json();
-                        console.log('📦 Данные 3D:', data3d);
-                        loadGraph3D(data3d, currentModelType);
-                    } else {
-                        console.warn('⚠️ 3D endpoint не доступен, показываем 2D');
-                        showGraphPlaceholder('3d', '3D график недоступен. Используйте 2D режим.');
-                        // Автоматически переключаемся на 2D
-                        if (view2dBtn) view2dBtn.click();
-                    }
-                } catch (e3d) {
-                    console.warn('⚠️ Ошибка 3D:', e3d);
-                    showGraphPlaceholder('3d', '3D график недоступен');
-                    if (view2dBtn) view2dBtn.click();
-                }
+            } else {
+                const data3d = await m2.json();
+                loadGraph3D(data3d, currentModelType);
             }
             
         } catch (e) {
-            console.error('❌ Ошибка загрузки графика:', e);
-            if (graphStats) {
-                graphStats.innerHTML = `
-                    <p class="error">
-                        ❌ Ошибка загрузки: ${e.message}<br>
-                        <small>Проверьте консоль (F12) для деталей</small>
-                    </p>`;
-            }
+            console.error('❌ Ошибка графика:', e);
+            if (graphStats) graphStats.innerHTML = `<p class="error">❌ ${e.message}</p>`;
         } finally {
-            if (graphLoading) graphLoading.classList.add('hidden');
+            graphLoading?.classList.add('hidden');
         }
     }
     
     function showGraphPlaceholder(view, message) {
         if (view === '2d') {
-            const ctx = document.getElementById('training-chart-2d');
-            if (ctx && ctx.parentElement) {
-                ctx.parentElement.innerHTML = `<div class="graph-placeholder">${message}</div>`;
+            const container = document.getElementById('graph-2d-container');
+            const canvas = document.getElementById('training-chart-2d');
+            if (container && canvas) {
+                canvas.style.display = 'none';
+                let placeholder = container.querySelector('.graph-placeholder');
+                if (!placeholder) {
+                    placeholder = document.createElement('div');
+                    placeholder.className = 'graph-placeholder';
+                    container.appendChild(placeholder);
+                }
+                placeholder.textContent = message;
+                placeholder.style.display = 'flex';
             }
         } else {
-            const container = document.getElementById('training-chart-3d');
+            const container = document.getElementById('graph-3d-container');
+            const plotDiv = document.getElementById('training-chart-3d');
+            if (container && plotDiv) {
+                plotDiv.style.display = 'none';
+                let placeholder = container.querySelector('.graph-placeholder');
+                if (!placeholder) {
+                    placeholder = document.createElement('div');
+                    placeholder.className = 'graph-placeholder';
+                    container.appendChild(placeholder);
+                }
+                placeholder.textContent = message;
+                placeholder.style.display = 'flex';
+            }
+        }
+    }
+    
+    function hideGraphPlaceholder(view) {
+        if (view === '2d') {
+            const canvas = document.getElementById('training-chart-2d');
+            const container = document.getElementById('graph-2d-container');
+            if (canvas) canvas.style.display = 'block';
             if (container) {
-                container.innerHTML = `<div class="graph-placeholder">${message}</div>`;
+                const p = container.querySelector('.graph-placeholder');
+                if (p) p.style.display = 'none';
+            }
+        } else {
+            const plotDiv = document.getElementById('training-chart-3d');
+            const container = document.getElementById('graph-3d-container');
+            if (plotDiv) plotDiv.style.display = 'block';
+            if (container) {
+                const p = container.querySelector('.graph-placeholder');
+                if (p) p.style.display = 'none';
             }
         }
     }
@@ -371,33 +386,26 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
+        // Сначала скрываем заглушку
+        hideGraphPlaceholder('2d');
+        
         // Проверка данных
         if (!metrics || metrics.length === 0) {
-            showGraphPlaceholder('2d', 'Нет данных для отображения');
-            if (chart2d) {
-                chart2d.destroy();
-                chart2d = null;
-            }
+            showGraphPlaceholder('2d', 'Нет данных');
+            if (chart2d) { chart2d.destroy(); chart2d = null; }
             return;
         }
         
-        // Восстановить canvas если был заменен
-        if (!ctx.tagName || ctx.tagName.toLowerCase() !== 'canvas') {
-            ctx.parentElement.innerHTML = '<canvas id="training-chart-2d"></canvas>';
-            return loadGraph2D(metrics, modelType);
-        }
-        
+        // Уничтожаем старый график если есть
         if (chart2d) chart2d.destroy();
         
         const epochs = metrics.map(m => m.epoch);
         const losses = metrics.map(m => m.loss !== null ? m.loss : 0);
         const modelConfig = getModelChartConfig(modelType);
         
-        console.log('📈 2D данные:', { epochs: epochs.length, losses: losses.length });
-        
         const datasets = [{
             label: modelConfig.lossLabel,
-            data: losses,
+            data: losses,  // ✅ Ключ "data:" внутри datasets
             borderColor: '#ff6b8a',
             backgroundColor: 'rgba(255, 107, 138, 0.1)',
             fill: true,
@@ -412,7 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (hasAccuracy) {
             datasets.push({
                 label: modelConfig.accuracyLabel,
-                data: accuracies,
+                data: accuracies,  // ✅ Ключ "data:" внутри datasets
                 borderColor: '#22c55e',
                 borderWidth: 2,
                 borderDash: [5, 5],
@@ -425,7 +433,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             chart2d = new Chart(ctx, {
                 type: 'line',
-                data: {
+                data: {  // ✅ ВАЖНО: Ключ "data:" для основного объекта
                     labels: epochs,
                     datasets: datasets
                 },
@@ -436,7 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     scales: {
                         x: { 
                             title: { display: true, text: 'Эпоха' },
-                            grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                            grid: { color: 'rgba(0,0,0,0.05)' },
                             beginAtZero: true
                         },
                         y: { 
@@ -444,7 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             display: true,
                             position: 'left',
                             title: { display: true, text: modelConfig.lossLabel },
-                            grid: { color: 'rgba(255, 107, 138, 0.1)' },
+                            grid: { color: 'rgba(255,107,138,0.1)' },
                             min: 0,
                             beginAtZero: true
                         },
@@ -457,7 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             min: 0,
                             max: 100,
                             beginAtZero: true,
-                            ticks: { callback: (value) => value + '%' }
+                            ticks: { callback: v => v + '%' }
                         }
                     },
                     plugins: {
@@ -468,11 +476,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                     let label = context.dataset.label || '';
                                     if (label) label += ': ';
                                     if (context.parsed.y !== null && !isNaN(context.parsed.y)) {
-                                        if (context.dataset.yAxisID === 'y1') {
-                                            label += context.parsed.y.toFixed(1) + '%';
-                                        } else {
-                                            label += context.parsed.y.toFixed(4);
-                                        }
+                                        label += context.dataset.yAxisID === 'y1' 
+                                            ? context.parsed.y.toFixed(1) + '%' 
+                                            : context.parsed.y.toFixed(4);
                                     }
                                     return label;
                                 }
@@ -483,110 +489,61 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             console.log('✅ 2D график создан');
         } catch (e) {
-            console.error('❌ Ошибка создания 2D графика:', e);
-            showGraphPlaceholder('2d', 'Ошибка отрисовки графика');
+            console.error('❌ Ошибка 2D:', e);
+            showGraphPlaceholder('2d', 'Ошибка отрисовки');
         }
     }
     
     function loadGraph3D(data3d, modelType) {
         const container = document.getElementById('training-chart-3d');
-        if (!container || typeof Plotly === 'undefined') {
-            console.error('❌ Plotly не доступен или контейнер не найден');
-            return;
-        }
+        if (!container || typeof Plotly === 'undefined') return;
         
-        // Проверка данных перед передачей в Plotly
-        if (!data3d || !data3d.data_3d || 
-            !data3d.data_3d.x || data3d.data_3d.x.length === 0 ||
-            !data3d.data_3d.y || data3d.data_3d.y.length === 0 ||
-            !data3d.data_3d.z || data3d.data_3d.z.length === 0) {
-            console.warn('⚠️ Нет данных для 3D графика');
-            showGraphPlaceholder('3d', 'Нет данных для 3D отображения');
+        hideGraphPlaceholder('3d');
+        
+        if (!data3d || !data3d.data_3d || !data3d.data_3d.x || data3d.data_3d.x.length === 0) {
+            showGraphPlaceholder('3d', 'Нет данных для 3D');
             Plotly.purge(container);
             return;
         }
         
-        // Проверка на NaN и null значения
         const x = data3d.data_3d.x.filter(v => v !== null && v !== undefined && !isNaN(v));
         const y = data3d.data_3d.y.filter(v => v !== null && v !== undefined && !isNaN(v));
         const z = data3d.data_3d.z.filter(v => v !== null && v !== undefined && !isNaN(v));
         
         if (x.length === 0 || y.length === 0 || z.length === 0) {
-            console.warn('⚠️ Все данные содержат NaN/null');
-            showGraphPlaceholder('3d', 'Некорректные данные для 3D');
+            showGraphPlaceholder('3d', 'Некорректные данные');
             Plotly.purge(container);
             return;
         }
         
-        // Выравнивание массивов по минимальной длине
         const minLength = Math.min(x.length, y.length, z.length);
         const safeX = x.slice(0, minLength);
         const safeY = y.slice(0, minLength);
         const safeZ = z.slice(0, minLength);
         
-        console.log('📈 3D данные:', { x: safeX.length, y: safeY.length, z: safeZ.length });
-        
         const modelConfig = getModelChartConfig(modelType);
         
         try {
             Plotly.newPlot(container, [{
-                x: safeX,
-                y: safeY,
-                z: safeZ,
+                x: safeX, y: safeY, z: safeZ,
                 mode: 'lines+markers',
                 type: 'scatter3d',
                 name: modelConfig.lossLabel,
-                marker: {
-                    size: 4,
-                    color: safeZ,
-                    colorscale: data3d.layout_hints?.color_scale || 'Viridis',
-                    opacity: 0.8,
-                    colorbar: { 
-                        title: modelConfig.accuracyLabel || 'Метрика',
-                        titleside: 'right'
-                    }
-                },
-                line: { 
-                    color: '#ff6b8a', 
-                    width: 2 
-                },
+                marker: { size: 4, color: safeZ, colorscale: data3d.layout_hints?.color_scale || 'Viridis', opacity: 0.8, colorbar: { title: modelConfig.accuracyLabel || 'Метрика' } },
+                line: { color: '#ff6b8a', width: 2 },
                 text: data3d.data_3d.text || safeX.map((v, i) => `Эпоха ${v}: Loss=${safeY[i]?.toFixed(4)}`),
                 hoverinfo: 'text+x+y+z'
             }], {
                 margin: { l: 0, r: 0, b: 0, t: 0 },
                 scene: {
-                    xaxis: { 
-                        title: data3d.layout_hints?.x_title || 'Эпоха',
-                        gridcolor: '#eee',
-                        zeroline: false,
-                        showbackground: true,
-                        backgroundcolor: 'rgba(240, 240, 240, 0.5)'
-                    },
-                    yaxis: { 
-                        title: data3d.layout_hints?.y_title || 'Loss',
-                        gridcolor: '#eee',
-                        zeroline: false,
-                        showbackground: true,
-                        backgroundcolor: 'rgba(240, 240, 240, 0.5)'
-                    },
-                    zaxis: { 
-                        title: data3d.layout_hints?.z_title || 'Metric',
-                        gridcolor: '#eee',
-                        zeroline: false,
-                        showbackground: true,
-                        backgroundcolor: 'rgba(240, 240, 240, 0.5)'
-                    },
-                    camera: { 
-                        eye: { x: 1.5, y: 1.5, z: 1.5 } 
-                    },
-                    aspectmode: 'data'
+                    xaxis: { title: data3d.layout_hints?.x_title || 'Эпоха', gridcolor: '#eee', zeroline: false, showbackground: true, backgroundcolor: 'rgba(240,240,240,0.5)' },
+                    yaxis: { title: data3d.layout_hints?.y_title || 'Loss', gridcolor: '#eee', zeroline: false, showbackground: true, backgroundcolor: 'rgba(240,240,240,0.5)' },
+                    zaxis: { title: data3d.layout_hints?.z_title || 'Metric', gridcolor: '#eee', zeroline: false, showbackground: true, backgroundcolor: 'rgba(240,240,240,0.5)' },
+                    camera: { eye: { x: 1.5, y: 1.5, z: 1.5 } }
                 },
                 paper_bgcolor: 'transparent',
                 plot_bgcolor: 'transparent',
-                font: { 
-                    family: 'Segoe UI, sans-serif', 
-                    size: 12 
-                }
+                font: { family: 'Segoe UI, sans-serif', size: 12 }
             }, {
                 responsive: true,
                 displayModeBar: true,
@@ -595,8 +552,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             console.log('✅ 3D график создан');
         } catch (e) {
-            console.error('❌ Ошибка создания 3D графика:', e);
-            showGraphPlaceholder('3d', `Ошибка 3D: ${e.message}`);
+            console.error('❌ Ошибка 3D:', e);
+            showGraphPlaceholder('3d', `Ошибка: ${e.message}`);
             Plotly.purge(container);
         }
     }
@@ -612,22 +569,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function getModelChartConfig(modelType) {
         const configs = {
-            'cnn': { 
-                lossLabel: 'Contrastive Loss', 
-                accuracyLabel: 'Embedding Distance' 
-            },
-            'rnn': { 
-                lossLabel: 'Cross-Entropy Loss', 
-                accuracyLabel: 'Classification Accuracy' 
-            },
-            'autoencoder': { 
-                lossLabel: 'Reconstruction MSE', 
-                accuracyLabel: 'Ordinariness Score' 
-            },
-            'mlp': { 
-                lossLabel: 'Binary Cross-Entropy', 
-                accuracyLabel: 'Win Prediction Accuracy' 
-            }
+            'cnn': { lossLabel: 'Contrastive Loss', accuracyLabel: 'Embedding Distance' },
+            'rnn': { lossLabel: 'Cross-Entropy Loss', accuracyLabel: 'Classification Accuracy' },
+            'autoencoder': { lossLabel: 'Reconstruction MSE', accuracyLabel: 'Ordinariness Score' },
+            'mlp': { lossLabel: 'Binary Cross-Entropy', accuracyLabel: 'Win Prediction Accuracy' }
         };
         return configs[modelType] || configs['cnn'];
     }
@@ -637,7 +582,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             await fetch('/api/pokemon', { method: 'DELETE' });
             loadPokemon();
-            if (graphSection) graphSection.classList.add('hidden');
+            graphSection?.classList.add('hidden');
             alert('✅ Удалено');
         } catch (e) {
             alert('Ошибка: ' + e.message);
@@ -648,18 +593,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = cnnInput?.value.trim().toLowerCase();
         if (!name) { alert('Введите имя!'); return; }
         
-        if (cnnLoading) cnnLoading.classList.remove('hidden');
-        if (cnnResults) cnnResults.classList.remove('hidden');
+        cnnLoading?.classList.remove('hidden');
+        cnnResults?.classList.remove('hidden');
         if (cnnResults) cnnResults.innerHTML = '<div class="loading">⏳</div>';
         
         try {
             const res = await fetch(`/api/cnn/similar?name=${encodeURIComponent(name)}&k=5`);
             const data = await res.json();
             
-            if (data.error) {
-                if (cnnResults) cnnResults.innerHTML = `<p>❌ ${data.error}</p>`;
-                return;
-            }
+            if (data.error) { if (cnnResults) cnnResults.innerHTML = `<p>❌ ${data.error}</p>`; return; }
             
             let html = `<div class="result-card target-card"><img src="${data.target.sprite_url || ''}" alt="${data.target.name}"><div class="name">${data.target.name}</div></div>`;
             
@@ -675,7 +617,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             if (cnnResults) cnnResults.innerHTML = `<p>❌ ${e.message}</p>`;
         } finally {
-            if (cnnLoading) cnnLoading.classList.add('hidden');
+            cnnLoading?.classList.add('hidden');
         }
     }
     
@@ -683,18 +625,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = rnnInput?.value.trim().toLowerCase();
         if (!name) { alert('Введите имя!'); return; }
         
-        if (rnnLoading) rnnLoading.classList.remove('hidden');
-        if (rnnResults) rnnResults.classList.remove('hidden');
+        rnnLoading?.classList.remove('hidden');
+        rnnResults?.classList.remove('hidden');
         if (rnnResults) rnnResults.innerHTML = '<div class="loading">⏳</div>';
         
         try {
             const res = await fetch(`/api/rnn/classify?name=${encodeURIComponent(name)}`);
             const data = await res.json();
             
-            if (data.error) {
-                if (rnnResults) rnnResults.innerHTML = `<p>❌ ${data.error}</p>`;
-                return;
-            }
+            if (data.error) { if (rnnResults) rnnResults.innerHTML = `<p>❌ ${data.error}</p>`; return; }
             
             const prob = data.result.probabilities || [0, 0, 0];
             if (rnnResults) {
@@ -705,13 +644,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="stat">${data.result.class_ru || ''}</div>
                         <div class="stat">BST: ${data.pokemon.bst}</div>
                         <div class="stat">🔹 ${Math.round(prob[0]*100)}% | 🔸 ${Math.round(prob[1]*100)}% | 🔴 ${Math.round(prob[2]*100)}%</div>
-                    </div>
-                `;
+                    </div>`;
             }
         } catch (e) {
             if (rnnResults) rnnResults.innerHTML = `<p>❌ ${e.message}</p>`;
         } finally {
-            if (rnnLoading) rnnLoading.classList.add('hidden');
+            rnnLoading?.classList.add('hidden');
         }
     }
     
@@ -719,18 +657,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = aeInput?.value.trim().toLowerCase();
         if (!name) { alert('Введите имя!'); return; }
         
-        if (aeLoading) aeLoading.classList.remove('hidden');
-        if (aeResults) aeResults.classList.remove('hidden');
+        aeLoading?.classList.remove('hidden');
+        aeResults?.classList.remove('hidden');
         if (aeResults) aeResults.innerHTML = '<div class="loading">⏳</div>';
         
         try {
             const res = await fetch(`/api/autoencoder/ordinariness?name=${encodeURIComponent(name)}`);
             const data = await res.json();
             
-            if (data.error) {
-                if (aeResults) aeResults.innerHTML = `<p>❌ ${data.error}</p>`;
-                return;
-            }
+            if (data.error) { if (aeResults) aeResults.innerHTML = `<p>❌ ${data.error}</p>`; return; }
             
             const ord = data.result.ordinariness || 0;
             if (aeResults) {
@@ -738,15 +673,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="result-card target-card">
                         <img src="${data.pokemon.sprite_url || ''}" alt="${data.pokemon.name}">
                         <div class="name">${data.pokemon.name}</div>
-                        <div class="stat" style="font-size: 24px; color: #ff6b8a;">${ord}%</div>
+                        <div class="stat" style="font-size:24px;color:#ff6b8a;">${ord}%</div>
                         <div class="stat">${data.result.description || 'обычности'}</div>
-                    </div>
-                `;
+                    </div>`;
             }
         } catch (e) {
             if (aeResults) aeResults.innerHTML = `<p>❌ ${e.message}</p>`;
         } finally {
-            if (aeLoading) aeLoading.classList.add('hidden');
+            aeLoading?.classList.add('hidden');
         }
     }
     
@@ -758,34 +692,30 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!hp && !atk && !def_ && !spd) { alert('Введите статы!'); return; }
         
-        if (mlpLoading) mlpLoading.classList.remove('hidden');
-        if (mlpResults) mlpResults.classList.remove('hidden');
+        mlpLoading?.classList.remove('hidden');
+        mlpResults?.classList.remove('hidden');
         if (mlpResults) mlpResults.innerHTML = '<div class="loading">⏳</div>';
         
         try {
             const res = await fetch(`/api/mlp/predict?hp=${hp}&atk=${atk}&def=${def_}&spd=${spd}`);
             const data = await res.json();
             
-            if (data.error) {
-                if (mlpResults) mlpResults.innerHTML = `<p>❌ ${data.error}</p>`;
-                return;
-            }
+            if (data.error) { if (mlpResults) mlpResults.innerHTML = `<p>❌ ${data.error}</p>`; return; }
             
             const prob = data.result.win_probability || 0;
             if (mlpResults) {
                 mlpResults.innerHTML = `
                     <div class="result-card target-card">
-                        <div class="stat" style="font-size: 32px; color: #ff6b8a;">${prob}%</div>
+                        <div class="stat" style="font-size:32px;color:#ff6b8a;">${prob}%</div>
                         <div class="stat">победы</div>
                         <div class="stat">${data.result.classification || ''}</div>
                         <div class="stat">${data.result.description || ''}</div>
-                    </div>
-                `;
+                    </div>`;
             }
         } catch (e) {
             if (mlpResults) mlpResults.innerHTML = `<p>❌ ${e.message}</p>`;
         } finally {
-            if (mlpLoading) mlpLoading.classList.add('hidden');
+            mlpLoading?.classList.add('hidden');
         }
     }
     
@@ -813,6 +743,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     console.log('🦐 Готово!');
-    console.log('📊 График обучения всегда виден');
-    console.log('🔄 Кнопка обновления графика активна');
+    console.log('📊 График всегда виден');
+    console.log('🔄 Кнопка обновления активна');
 });

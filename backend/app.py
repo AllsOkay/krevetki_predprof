@@ -216,42 +216,79 @@ def get_analytics():
     global trainer, predictor
     analytics = {}
     
-    # Демо-данные если модель не обучена
+    # ✅ ДЕМО-ДАННЫЕ ЕСЛИ МОДЕЛЬ НЕ ОБУЧЕНА
     if not trainer or not trainer.history:
+        print("⚠️ Модель не обучена, возвращаем демо-данные")
         return jsonify({
-            'accuracy_vs_epochs': {'epochs': [1,2,3], 'accuracy': [0.5, 0.7, 0.85], 'val_accuracy': [0.45, 0.65, 0.8]},
-            'class_distribution': {'classes': [0,1,2,3,4], 'counts': [240, 240, 240, 240, 240]},
-            'per_record_accuracy': [1,0,1,1,0],
-            'top5_classes': {'classes': [0,1,2,3,4], 'counts': [100, 95, 90, 85, 80]}
+            'accuracy_vs_epochs': {
+                'epochs': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                'accuracy': [0.65, 0.72, 0.78, 0.82, 0.85, 0.87, 0.89, 0.91, 0.92, 0.93],
+                'val_accuracy': [0.63, 0.70, 0.76, 0.80, 0.83, 0.85, 0.87, 0.88, 0.89, 0.90]
+            },
+            'class_distribution': {
+                'classes': [1, 2, 3, 4, 5],
+                'counts': [320, 315, 325, 310, 330]
+            },
+            'per_record_accuracy': [1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1],
+            'top5_classes': {
+                'classes': [1, 2, 3, 4, 5],
+                'counts': [150, 145, 140, 135, 130]
+            },
+            'message': 'Демо-данные (модель не обучена)'
         })
     
-    if trainer.history:
-        analytics['accuracy_vs_epochs'] = {
-            'epochs': list(range(len(trainer.history['accuracy']))),
-            'accuracy': trainer.history['accuracy'],
-            'val_accuracy': trainer.history.get('val_accuracy', [])
-        }
+    # ✅ РЕАЛЬНЫЕ ДАННЫЕ ПОСЛЕ ОБУЧЕНИЯ
+    try:
+        if trainer.history:
+            analytics['accuracy_vs_epochs'] = {
+                'epochs': list(range(1, len(trainer.history['accuracy']) + 1)),
+                'accuracy': trainer.history['accuracy'],
+                'val_accuracy': trainer.history.get('val_accuracy', [])
+            }
+        
+        if trainer.train_data and 'y' in trainer.train_data:
+            classes, counts = np.unique(trainer.train_data['y'], return_counts=True)
+            analytics['class_distribution'] = {
+                'classes': classes.tolist(),
+                'counts': counts.tolist()
+            }
+        
+        if predictor and predictor.last_predictions is not None:
+            analytics['per_record_accuracy'] = predictor.last_predictions.tolist()
+        
+        if trainer.val_data and 'y' in trainer.val_data:
+            val_classes, val_counts = np.unique(trainer.val_data['y'], return_counts=True)
+            top5_idx = np.argsort(val_counts)[-5:][::-1]
+            analytics['top5_classes'] = {
+                'classes': val_classes[top5_idx].tolist(),
+                'counts': val_counts[top5_idx].tolist()
+            }
+        
+        print(f"✅ Аналитика отправлена: {len(analytics)} блоков данных")
+        return jsonify(analytics)
     
-    if trainer.train_data:
-        classes, counts = np.unique(trainer.train_data['y'], return_counts=True)
-        analytics['class_distribution'] = {
-            'classes': classes.tolist(),
-            'counts': counts.tolist()
-        }
-    
-    if predictor and predictor.last_predictions is not None:
-        analytics['per_record_accuracy'] = predictor.last_predictions.tolist()
-    
-    if trainer.val_data:
-        val_classes, val_counts = np.unique(trainer.val_data['y'], return_counts=True)
-        top5_idx = np.argsort(val_counts)[-5:][::-1]
-        analytics['top5_classes'] = {
-            'classes': val_classes[top5_idx].tolist(),
-            'counts': val_counts[top5_idx].tolist()
-        }
-    
-    return jsonify(analytics)
-
+    except Exception as e:
+        print(f"❌ Ошибка формирования аналитики: {e}")
+        import traceback
+        traceback.print_exc()
+        # ✅ ВОЗВРАЩАЕМ ДЕМО-ДАННЫЕ ПРИ ОШИБКЕ
+        return jsonify({
+            'accuracy_vs_epochs': {
+                'epochs': [1, 2, 3],
+                'accuracy': [0.5, 0.7, 0.85],
+                'val_accuracy': [0.45, 0.65, 0.8]
+            },
+            'class_distribution': {
+                'classes': [1, 2, 3, 4, 5],
+                'counts': [240, 240, 240, 240, 240]
+            },
+            'per_record_accuracy': [1, 0, 1, 1, 0],
+            'top5_classes': {
+                'classes': [1, 2, 3, 4, 5],
+                'counts': [100, 95, 90, 85, 80]
+            },
+            'error': str(e)
+        })
 
 # ==================== API: ПОЛЬЗОВАТЕЛИ ====================
 

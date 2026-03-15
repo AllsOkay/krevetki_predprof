@@ -1,114 +1,122 @@
 <!-- frontend/index.html -->
-<!-- Страница авторизации / главная страница -->
-<!-- Чистый HTML + JavaScript, без шаблонизаторов -->
-
+<!-- Страница авторизации для Alien Signal Classifier -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🦐 Alien Signal Classifier | Вход</title>
-    
-    <!-- Подключаем креветочные стили -->
     <link rel="stylesheet" href="/css/style.css">
-    
-    <!-- Иконки (опционально, можно заменить на emoji) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <!-- Навигация (упрощённая для страницы входа) -->
     <nav class="navbar">
-        <a href="/" class="nav-brand">Alien Classifier</a>
+        <a href="/" class="nav-brand">
+            <span style="margin-right: 8px;">🦐</span>
+            Alien Classifier
+        </a>
         <div class="nav-links">
-            <span class="status-badge status-success">🟢 Система активна</span>
+            <span class="status-badge status-success">
+                <i class="fas fa-circle" style="font-size: 8px;"></i>
+                Система активна
+            </span>
         </div>
     </nav>
-    
-    <!-- Основной контент -->
+
     <main class="container">
-        <!-- Карточка входа -->
-        <div class="card animate-fade-in" style="max-width: 500px; margin: 60px auto;">
-            <h1 class="text-center">🛸 Вход в систему</h1>
-            <p class="text-center" style="color: var(--text-secondary); margin-bottom: 24px;">
-                Классификация инопланетных радиосигналов
-            </p>
-            
-            <!-- Форма авторизации -->
-            <form id="loginForm">
-                <div class="form-group">
-                    <label for="username">
-                        <i class="fas fa-user"></i> Логин
-                    </label>
-                    <input 
-                        type="text" 
-                        id="username" 
-                        name="username" 
-                        placeholder="Введите ваш логин"
-                        required
-                        autocomplete="username"
-                    >
+        <div class="login-container">
+            <div class="login-card animate-fade-in">
+                <div class="login-header">
+                    <h1>🛸 Вход в систему</h1>
+                    <p>Классификация инопланетных радиосигналов</p>
                 </div>
-                
-                <div class="form-group">
-                    <label for="password">
-                        <i class="fas fa-lock"></i> Пароль
-                    </label>
-                    <input 
-                        type="password" 
-                        id="password" 
-                        name="password" 
-                        placeholder="Введите ваш пароль"
-                        required
-                        autocomplete="current-password"
-                    >
+
+                <!-- ✅ ИСПРАВЛЕНИЕ: autocomplete="off" для формы -->
+                <form id="loginForm" autocomplete="off">
+                    <div class="form-group">
+                        <label for="username">
+                            <i class="fas fa-user"></i> Логин
+                        </label>
+                        <!-- ✅ autocomplete="off" для логина -->
+                        <input
+                            type="text"
+                            id="username"
+                            name="username"
+                            placeholder="Введите ваш логин"
+                            required
+                            autocomplete="off"
+                            autofocus
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">
+                            <i class="fas fa-lock"></i> Пароль
+                        </label>
+                        <!-- ✅ autocomplete="new-password" предотвращает автозаполнение -->
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            placeholder="Введите ваш пароль"
+                            required
+                            autocomplete="new-password"
+                        >
+                        <button type="button" class="password-toggle" id="passwordToggle" tabindex="-1">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+
+                    <div id="loginError" class="error-message">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span id="errorText"></span>
+                    </div>
+
+                    <button type="submit" class="login-btn" id="loginBtn">
+                        <i class="fas fa-sign-in-alt"></i> Войти в систему
+                    </button>
+                </form>
+
+                <div class="demo-credentials">
+                    <h4><i class="fas fa-info-circle"></i> Демо-доступ для тестирования:</h4>
+                    <div class="credential-item">
+                        <strong>👑 Администратор:</strong><br>
+                        Логин: <code>admin</code> | Пароль: <code>admin123</code>
+                    </div>
+                    <div class="credential-item">
+                        <strong>👤 Пользователь:</strong><br>
+                        Логин: <code>user</code> | Пароль: <code>user123</code>
+                    </div>
                 </div>
-                
-                <!-- Сообщение об ошибке (скрыто по умолчанию) -->
-                <div id="loginError" class="status-badge status-error hidden" style="margin-bottom: 16px;">
-                    <!-- Ошибка будет вставлена здесь -->
-                </div>
-                
-                <!-- Кнопка входа -->
-                <button type="submit" class="btn" style="width: 100%;">
-                    <i class="fas fa-sign-in-alt"></i> Войти в систему
-                </button>
-            </form>
-            
-            <!-- Информация для демо -->
-            <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #eee;">
-                <p style="font-size: 0.9rem; color: var(--text-secondary);">
-                    <strong>Демо-доступ:</strong><br>
-                    👨‍💼 Администратор: <code>admin</code> / <code>admin123</code><br>
-                    👤 Пользователь: <code>user</code> / <code>user123</code>
+            </div>
+
+            <div class="info-card animate-fade-in-delayed">
+                <h2>📡 О проекте</h2>
+                <p>
+                    Эта система использует искусственный интеллект для классификации
+                    радиосигналов от различных инопланетных цивилизаций.
+                    Нейронная сеть обучена на 1600 записях сигналов и способна
+                    определять отправителя с высокой точностью.
                 </p>
+                <ul>
+                    <li>🧠 Кастомная нейросеть, реализованная с нуля</li>
+                    <li>🔐 Двухуровневая система авторизации</li>
+                    <li>📊 Интерактивная аналитика и визуализация</li>
+                    <li>☁️ Поддержка Yandex DataSphere</li>
+                </ul>
             </div>
         </div>
-        
-        <!-- Информация о проекте -->
-        <div class="card animate-fade-in" style="animation-delay: 0.2s;">
-            <h2>📡 О проекте</h2>
-            <p>
-                Эта система использует искусственный интеллект для классификации 
-                радиосигналов от различных инопланетных цивилизаций. 
-                Нейронная сеть обучена на 1600 записях сигналов и способна 
-                определять отправителя с высокой точностью.
-            </p>
-            <ul style="margin: 16px 0 16px 24px;">
-                <li>🧠 Кастомная нейросеть, реализованная с нуля</li>
-                <li>🔐 Двухуровневая система авторизации</li>
-                <li>📊 Интерактивная аналитика и визуализация</li>
-                <li>☁️ Поддержка Yandex DataSphere для масштабирования</li>
-            </ul>
-        </div>
     </main>
-    
-    <!-- Футер -->
-    <footer style="text-align: center; padding: 20px; color: var(--text-secondary);">
+
+    <footer class="footer">
         <p>🦐 Alien Signal Classifier v1.0 | МПОШ 2226</p>
+        <p style="margin-top: 5px; font-size: 0.85rem;">
+            Продуктовый сектор • Раздел "ИТ" • Практика заключительного этапа
+        </p>
     </footer>
-    
-    <!-- Подключаем JavaScript модули -->
+
     <script src="/js/auth.js"></script>
     <script src="/js/main.js"></script>
+    <script src="/js/login.js"></script>
 </body>
 </html>

@@ -1,8 +1,9 @@
 // frontend/js/auth.js
-// Модуль аутентификации: логин, проверка токена, выход
-// Работает с Flask backend через Fetch API
+// Модуль аутентификации: БЕЗОПАСНЫЙ вход через POST запрос
 
-// Глобальный объект для хранения состояния пользователя
+/**
+ * Глобальный объект для хранения состояния пользователя
+ */
 window.currentUser = null;
 
 /**
@@ -18,13 +19,15 @@ async function login(username, password) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({
+                username: username,
+                password: password
+            })
         });
         
         const data = await response.json();
         
         if (response.ok) {
-            // Сохраняем данные пользователя в памяти и localStorage
             window.currentUser = {
                 token: data.token,
                 username: data.username,
@@ -33,7 +36,6 @@ async function login(username, password) {
                 role: data.role
             };
             
-            // Сохраняем токен для восстановления сессии
             localStorage.setItem('auth_token', data.token);
             localStorage.setItem('user_data', JSON.stringify({
                 name: data.name,
@@ -45,7 +47,6 @@ async function login(username, password) {
         } else {
             return { success: false, error: data.error || 'Ошибка авторизации' };
         }
-        
     } catch (error) {
         console.error('Login error:', error);
         return { success: false, error: 'Не удалось подключиться к серверу' };
@@ -54,7 +55,6 @@ async function login(username, password) {
 
 /**
  * Проверка валидности токена и восстановление сессии
- * @returns {Promise<boolean>} Успешна ли проверка
  */
 async function checkAuth() {
     const token = localStorage.getItem('auth_token');
@@ -65,53 +65,35 @@ async function checkAuth() {
     }
     
     try {
-        // Проверяем токен через health endpoint или специальный /api/me
         const response = await fetch('/api/health', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         
         if (response.ok) {
-            // Восстанавливаем данные пользователя
             const parsed = JSON.parse(userData);
-            window.currentUser = {
-                token,
-                ...parsed
-            };
+            window.currentUser = { token, ...parsed };
             return true;
         }
     } catch (error) {
         console.warn('Auth check failed:', error);
     }
     
-    // Если проверка не прошла - очищаем данные
     logout();
     return false;
 }
 
 /**
- * Выход из системы: очистка данных сессии
+ * Выход из системы
  */
 function logout() {
-    // Опционально: отозвать токен на сервере
-    if (window.currentUser?.token) {
-        fetch('/api/logout', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${window.currentUser.token}` }
-        }).catch(() => {}); // Игнорируем ошибки при выходе
-    }
-    
-    // Очищаем локальные данные
     window.currentUser = null;
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user_data');
-    
-    // Редирект на страницу входа
     window.location.href = '/';
 }
 
 /**
  * Получение заголовков для авторизованных запросов
- * @returns {Object} Заголовки с токеном
  */
 function getAuthHeaders() {
     return {
@@ -122,47 +104,31 @@ function getAuthHeaders() {
 
 /**
  * Проверка роли пользователя
- * @param {string} requiredRole - Требуемая роль ('admin' или 'user')
- * @returns {boolean} Имеет ли пользователь требуемую роль
  */
-function hasRole(requiredRole) {
-    return window.currentUser?.role === requiredRole;
+function hasRole(role) {
+    return window.currentUser?.role === role;
 }
 
 /**
- * Редирект в зависимости от роли
- * @param {string} currentPath - Текущий путь
+ * Перенаправление по роли
  */
 function redirectByRole(currentPath) {
-    if (!window.currentUser) {
-        window.location.href = '/';
-        return;
-    }
-    
-    // Если на странице входа и авторизован - редирект по роли
-    if (currentPath === '/' || currentPath.includes('index.html')) {
-        if (hasRole('admin')) {
+    if (window.currentUser?.role === 'admin') {
+        if (!currentPath.includes('admin')) {
             window.location.href = '/admin';
-        } else {
+        }
+    } else {
+        if (currentPath.includes('admin')) {
             window.location.href = '/dashboard';
         }
-        return;
     }
-    
-    // Если пользователь пытается зайти в админку без прав
-    if (currentPath.includes('admin') && !hasRole('admin')) {
-        window.location.href = '/dashboard';
-    }
-    
-    // Если админ пытается зайти в пользовательскую панель как обычный пользователь
-    // (не блокируем, админ может смотреть и пользовательский интерфейс)
 }
 
-// Экспортируем функции для использования в других модулях
-window.Auth = {
-    login,
-    checkAuth,
-    logout,
+// Экспортируем функции
+window.Auth = { 
+    login, 
+    checkAuth, 
+    logout, 
     getAuthHeaders,
     hasRole,
     redirectByRole

@@ -1,204 +1,192 @@
 # backend/database.py
-# Модуль для работы с базой данных пользователей
-# Использует SQLite для простоты развёртывания
+# Модуль для работы с базой данных пользователей с использованием SQLAlchemy
 
-import sqlite3
-import os
 from datetime import datetime
 from typing import Optional, List, Dict
+import hashlib
 
-# === Настройка путей (ДО импорта config) ===
-import sys
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-# ===
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, CheckConstraint
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import IntegrityError
 
-from config import Config
-# Также добавляем папку backend для локальных импортов
-backend_dir = os.path.dirname(os.path.abspath(__file__))
-if backend_dir not in sys.path:
-    sys.path.insert(0, backend_dir)
+DB_PATH = "database.db"
 
-# Путь к БД берём из конфигурации
-DB_PATH = Config.DATABASE_PATH
+# Создаём движок SQLAlchemy
+engine = create_engine(
+    f"sqlite:///{DB_PATH}",
+    echo=False,
+    connect_args={"check_same_thread": False}
+)
 
+# Базовый класс для моделей
+Base = declarative_base()
 
-def get_connection() -> sqlite3.Connection:
-    """
-    Создаёт и возвращает подключение к базе данных.
-    
-    :return: sqlite3.Connection объект
-    """
-    # Создаём директорию для БД если не существует
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    
-    conn = sqlite3.connect(DB_PATH)
-    # Возвращаем строки как словари для удобства
-    conn.row_factory = sqlite3.Row
-    return conn
+# Фабрика сессий
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
+class User(Base):
+    __tablename__ = "users"
 
-def init_db() -> None:
-    """
-    Инициализирует базу данных: создаёт таблицу пользователей если не существует.
-    
-    Таблица users содержит:
-    - username: уникальный логин (строка)
-    - password_hash: хэш пароля (SHA-256)
-    - name: имя пользователя (обязательно по ТЗ)
-    - surname: фамилия пользователя (обязательно по ТЗ)
-    - role: роль 'admin' или 'user'
-    - created_at: дата создания записи
-    """
-    conn = get_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            name TEXT NOT NULL,
-            surname TEXT NOT NULL,
-            role TEXT NOT NULL DEFAULT 'user',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            last_login TIMESTAMP,
-            CHECK(role IN ('admin', 'user'))
-        )
-    ''')
-    
-    # Создаём индекс для быстрого поиска по логину
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_username ON users(username)')
-    
-    conn.commit()
-    conn.close()
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String, unique=True, nullable=False, index=True)
+    password_hash = Column(String, nullable=False)
+    name = Column(String, nullable=False)
+    surname = Column(String, nullable=False)
+    role = Column(String, nullable=False, default="user")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_login = Column(DateTime, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("role IN ('admin', 'user')", name="check_role"),
+    )
 
 
-def create_user(username: str, password_hash: str, name: str, 
-                surname: str, role: str = 'user') -> bool:
-    """
-    Создаёт нового пользователя в базе данных.
-    
-    :param username: Уникальный логин пользователя
-    :param password_hash: Хэшированный пароль
-    :param name: Имя пользователя (обязательное поле по ТЗ)
-    :param surname: Фамилия пользователя (обязательное поле по ТЗ)
-    :param role: Роль пользователя ('admin' или 'user')
-    :return: True если пользователь создан, False если username уже занят
-    """
-    conn = get_connection()
-    cursor = conn.cursor()
-    
+def get_db():
+    """Вспомогательная функция для получения сессии."""
+    db = SessionLocal()
     try:
-        cursor.execute('''
-            INSERT INTO users (username, password_hash, name, surname, role)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (username, password_hash, name, surname, role))
-        conn.commit()
-        return True
-        
-    except sqlite3.IntegrityError:
-        # Username уже существует
-        return False
-        
+        yield db
     finally:
-        conn.close()
+        db.close()
+
+
+def hash_password(password: str) -> str:
+    """Хэширует пароль через SHA-256."""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+def create_demo_users():
+    """Создаёт демо-пользователей если их нет в базе."""
+    db = SessionLocal()
+    try:
+        # Проверяем есть ли уже пользователи
+        existing = db.query(User).filter_by(username='admin').first()
+        if existing:
+            return  # Демо-пользователи уже созданы
+        
+        # Создаём администратора
+        admin = User(
+            username='admin',
+            password_hash=hash_password('admin123'),
+            name='Админ',
+            surname='Системы',
+            role='admin'
+        )
+        db.add(admin)
+        
+        # Создаём обычного пользователя
+        user = User(
+            username='user',
+            password_hash=hash_password('user123'),
+            name='Тестовый',
+            surname='Пользователь',
+            role='user'
+        )
+        db.add(user)
+        
+        db.commit()
+        print("✅ Демо-пользователи созданы: admin/admin123, user/user123")
+        
+    except IntegrityError:
+        db.rollback()
+    finally:
+        db.close()
+
+
+def create_user(username: str, password_hash: str, name: str,
+                surname: str, role: str = "user") -> bool:
+    db = SessionLocal()
+    try:
+        user = User(
+            username=username,
+            password_hash=password_hash,
+            name=name,
+            surname=surname,
+            role=role
+        )
+        db.add(user)
+        db.commit()
+        return True
+    except IntegrityError:
+        db.rollback()
+        return False
+    finally:
+        db.close()
 
 
 def get_user(username: str, password_hash: Optional[str] = None) -> Optional[Dict]:
-    """
-    Получает пользователя из базы данных.
-    
-    :param username: Логин пользователя
-    :param password_hash: Опционально, для проверки пароля
-    :return: Словарь с данными пользователя или None если не найден
-    """
-    conn = get_connection()
-    cursor = conn.cursor()
-    
-    if password_hash:
-        # Проверка логина и пароля
-        cursor.execute('''
-            SELECT * FROM users 
-            WHERE username = ? AND password_hash = ?
-        ''', (username, password_hash))
-    else:
-        # Только поиск по логину (для получения информации)
-        cursor.execute('''
-            SELECT * FROM users WHERE username = ?
-        ''', (username,))
-    
-    row = cursor.fetchone()
-    conn.close()
-    
-    if row:
-        # Конвертируем sqlite3.Row в dict
-        return dict(row)
-    return None
+    db = SessionLocal()
+    try:
+        print(username)
+        if password_hash:
+            print(password_hash)
+            user = db.query(User).filter_by(username=username, password_hash=password_hash).first()
+        else:
+            user = db.query(User).filter_by(username=username).first()
+
+        if user:
+            return {
+                "id": user.id,
+                "username": user.username,
+                "password_hash": user.password_hash,
+                "name": user.name,
+                "surname": user.surname,
+                "role": user.role,
+                "created_at": user.created_at,
+                "last_login": user.last_login
+            }
+        return None
+    finally:
+        db.close()
 
 
 def update_last_login(username: str) -> bool:
-    """
-    Обновляет время последнего входа пользователя.
-    
-    :param username: Логин пользователя
-    :return: True если обновление успешно
-    """
-    conn = get_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE username = ?
-    ''', (username,))
-    
-    success = cursor.rowcount > 0
-    conn.commit()
-    conn.close()
-    
-    return success
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter_by(username=username).first()
+        if user:
+            user.last_login = datetime.utcnow()
+            db.commit()
+            return True
+        return False
+    finally:
+        db.close()
 
 
 def get_all_users() -> List[Dict]:
-    """
-    Получает список всех пользователей (для админ-панели).
-    
-    :return: Список словарей с данными пользователей (без паролей!)
-    """
-    conn = get_connection()
-    cursor = conn.cursor()
-    
-    # Не возвращаем password_hash в списке пользователей
-    cursor.execute('''
-        SELECT id, username, name, surname, role, created_at, last_login
-        FROM users ORDER BY created_at DESC
-    ''')
-    
-    users = [dict(row) for row in cursor.fetchall()]
-    conn.close()
-    
-    return users
+    db = SessionLocal()
+    try:
+        users = db.query(User).order_by(User.created_at.desc()).all()
+        return [
+            {
+                "id": u.id,
+                "username": u.username,
+                "name": u.name,
+                "surname": u.surname,
+                "role": u.role,
+                "created_at": u.created_at,
+                "last_login": u.last_login
+            }
+            for u in users
+        ]
+    finally:
+        db.close()
 
 
 def delete_user(username: str) -> bool:
-    """
-    Удаляет пользователя из базы данных.
-    
-    :param username: Логин пользователя для удаления
-    :return: True если пользователь удалён
-    """
-    conn = get_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute('DELETE FROM users WHERE username = ?', (username,))
-    
-    success = cursor.rowcount > 0
-    conn.commit()
-    conn.close()
-    
-    return success
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter_by(username=username).first()
+        if user:
+            db.delete(user)
+            db.commit()
+            return True
+        return False
+    finally:
+        db.close()
 
 
-# Создаём БД при импорте модуля (удобно для разработки)
-# В продакшене лучше вызывать init_db() явно из app.py
-init_db()
+# === ИНИЦИАЛИЗАЦИЯ БАЗЫ ===
+Base.metadata.create_all(bind=engine)
+create_demo_users()  # ✅ Создаём демо-пользователей при старте

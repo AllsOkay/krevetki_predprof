@@ -1,25 +1,125 @@
-2026-03-15 12:06:00,335 - __main__ - INFO - 🚀 Запуск Alien Signal Classifier v1.0
-2026-03-15 12:06:00,335 - __main__ - INFO - 📁 Режим: DEBUG
-2026-03-15 12:06:00,335 - __main__ - INFO - 🔗 Сервер: http://127.0.0.1:5000
-2026-03-15 12:06:00,397 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+2026-03-15 12:56:12,610 - __main__ - INFO - 🚀 Запуск Alien Signal Classifier v1.0
+2026-03-15 12:56:12,611 - __main__ - INFO - 📁 Режим: DEBUG
+2026-03-15 12:56:12,611 - __main__ - INFO - 🔗 Сервер: http://127.0.0.1:5000
+2026-03-15 12:56:12,632 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
  * Running on http://127.0.0.1:5000
-2026-03-15 12:06:00,397 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
-2026-03-15 12:06:00,399 - werkzeug - INFO -  * Restarting with stat
-2026-03-15 12:06:00,918 - __main__ - INFO - 🚀 Запуск Alien Signal Classifier v1.0
-2026-03-15 12:06:00,918 - __main__ - INFO - 📁 Режим: DEBUG
-2026-03-15 12:06:00,920 - __main__ - INFO - 🔗 Сервер: http://127.0.0.1:5000
-2026-03-15 12:06:00,931 - werkzeug - WARNING -  * Debugger is active!
-2026-03-15 12:06:00,932 - werkzeug - INFO -  * Debugger PIN: 338-347-062
-2026-03-15 12:06:09,521 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:09] "GET / HTTP/1.1" 200 -
-2026-03-15 12:06:09,529 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:09] "[33mGET /css/style.css HTTP/1.1[0m" 404 -
-2026-03-15 12:06:09,552 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:09] "GET /js/auth.js HTTP/1.1" 200 -
-2026-03-15 12:06:09,565 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:09] "GET /js/main.js HTTP/1.1" 200 -
-2026-03-15 12:06:09,616 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:09] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
-2026-03-15 12:06:14,754 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:14] "GET /?username=12&password=admin123 HTTP/1.1" 200 -
-2026-03-15 12:06:14,764 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:14] "[33mGET /css/style.css HTTP/1.1[0m" 404 -
-2026-03-15 12:06:14,767 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:14] "[36mGET /js/auth.js HTTP/1.1[0m" 304 -
-2026-03-15 12:06:14,768 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:14] "[36mGET /js/main.js HTTP/1.1[0m" 304 -
-2026-03-15 12:06:18,815 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:18] "GET /?username=1234567&password=admin123 HTTP/1.1" 200 -
-2026-03-15 12:06:18,823 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:18] "[33mGET /css/style.css HTTP/1.1[0m" 404 -
-2026-03-15 12:06:18,824 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:18] "[36mGET /js/auth.js HTTP/1.1[0m" 304 -
-2026-03-15 12:06:18,825 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:18] "[36mGET /js/main.js HTTP/1.1[0m" 304 -
+2026-03-15 12:56:12,632 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-15 12:56:12,633 - werkzeug - INFO -  * Restarting with stat
+2026-03-15 12:56:13,275 - __main__ - INFO - 🚀 Запуск Alien Signal Classifier v1.0
+2026-03-15 12:56:13,275 - __main__ - INFO - 📁 Режим: DEBUG
+2026-03-15 12:56:13,276 - __main__ - INFO - 🔗 Сервер: http://127.0.0.1:5000
+2026-03-15 12:56:13,288 - werkzeug - WARNING -  * Debugger is active!
+2026-03-15 12:56:13,289 - werkzeug - INFO -  * Debugger PIN: 338-347-062
+2026-03-15 12:56:16,725 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:56:16] "GET /?username=user&password=user123 HTTP/1.1" 200 -
+2026-03-15 12:56:16,741 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:56:16] "GET /css/style.css HTTP/1.1" 200 -
+2026-03-15 12:56:16,755 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:56:16] "GET /js/auth.js HTTP/1.1" 200 -
+2026-03-15 12:56:16,772 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:56:16] "GET /js/main.js HTTP/1.1" 200 -
+2026-03-15 12:56:19,361 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:56:19] "GET / HTTP/1.1" 200 -
+2026-03-15 12:56:19,374 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:56:19] "[36mGET /css/style.css HTTP/1.1[0m" 304 -
+2026-03-15 12:56:19,374 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:56:19] "[36mGET /js/auth.js HTTP/1.1[0m" 304 -
+2026-03-15 12:56:19,376 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:56:19] "[36mGET /js/main.js HTTP/1.1[0m" 304 -
+2026-03-15 12:59:58,402 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:59:58] "GET /admin.html HTTP/1.1" 200 -
+2026-03-15 12:59:58,414 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:59:58] "[33mGET /js/admin.js HTTP/1.1[0m" 404 -
+2026-03-15 12:59:58,415 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:59:58] "[36mGET /css/style.css HTTP/1.1[0m" 304 -
+2026-03-15 12:59:58,420 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:59:58] "[36mGET /js/auth.js HTTP/1.1[0m" 304 -
+2026-03-15 12:59:58,421 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:59:58] "[36mGET /js/main.js HTTP/1.1[0m" 304 -
+2026-03-15 12:59:58,502 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:59:58] "GET / HTTP/1.1" 200 -
+2026-03-15 12:59:58,511 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:59:58] "[36mGET /css/style.css HTTP/1.1[0m" 304 -
+2026-03-15 12:59:58,514 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:59:58] "[36mGET /js/auth.js HTTP/1.1[0m" 304 -
+2026-03-15 12:59:58,515 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:59:58] "[36mGET /js/main.js HTTP/1.1[0m" 304 -
+2026-03-15 13:00:04,985 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:00:04] "[36mGET /admin.html HTTP/1.1[0m" 304 -
+2026-03-15 13:00:04,999 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:00:04] "[36mGET /css/style.css HTTP/1.1[0m" 304 -
+2026-03-15 13:00:05,001 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:00:05] "[33mGET /js/admin.js HTTP/1.1[0m" 404 -
+2026-03-15 13:00:05,001 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:00:05] "[36mGET /js/auth.js HTTP/1.1[0m" 304 -
+2026-03-15 13:00:05,003 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:00:05] "[36mGET /js/main.js HTTP/1.1[0m" 304 -
+2026-03-15 13:00:05,031 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:00:05] "[36mGET / HTTP/1.1[0m" 304 -
+2026-03-15 13:00:05,042 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:00:05] "[36mGET /css/style.css HTTP/1.1[0m" 304 -
+2026-03-15 13:00:05,043 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:00:05] "[36mGET /js/auth.js HTTP/1.1[0m" 304 -
+2026-03-15 13:00:05,044 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:00:05] "[36mGET /js/main.js HTTP/1.1[0m" 304 -
+2026-03-15 13:00:12,085 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:00:12] "[36mGET / HTTP/1.1[0m" 304 -
+2026-03-15 13:00:12,094 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:00:12] "[36mGET /js/auth.js HTTP/1.1[0m" 304 -
+2026-03-15 13:00:12,095 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:00:12] "[36mGET /css/style.css HTTP/1.1[0m" 304 -
+2026-03-15 13:00:12,096 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:00:12] "[36mGET /js/main.js HTTP/1.1[0m" 304 -
+2026-03-15 13:00:34,474 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:00:34] "[36mGET / HTTP/1.1[0m" 304 -
+2026-03-15 13:00:34,483 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:00:34] "[36mGET /css/style.css HTTP/1.1[0m" 304 -
+2026-03-15 13:00:34,485 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:00:34] "[36mGET /js/auth.js HTTP/1.1[0m" 304 -
+2026-03-15 13:00:34,487 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:00:34] "[36mGET /js/main.js HTTP/1.1[0m" 304 -
+2026-03-15 13:01:51,354 - __main__ - INFO - 🚀 Запуск Alien Signal Classifier v1.0
+2026-03-15 13:01:51,354 - __main__ - INFO - 📁 Режим: DEBUG
+2026-03-15 13:01:51,355 - __main__ - INFO - 🔗 Сервер: http://127.0.0.1:5000
+2026-03-15 13:01:51,373 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2026-03-15 13:01:51,373 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-15 13:01:51,374 - werkzeug - INFO -  * Restarting with stat
+2026-03-15 13:01:52,049 - __main__ - INFO - 🚀 Запуск Alien Signal Classifier v1.0
+2026-03-15 13:01:52,049 - __main__ - INFO - 📁 Режим: DEBUG
+2026-03-15 13:01:52,049 - __main__ - INFO - 🔗 Сервер: http://127.0.0.1:5000
+2026-03-15 13:01:52,060 - werkzeug - WARNING -  * Debugger is active!
+2026-03-15 13:01:52,062 - werkzeug - INFO -  * Debugger PIN: 338-347-062
+2026-03-15 13:01:55,429 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:01:55] "GET / HTTP/1.1" 200 -
+2026-03-15 13:01:55,441 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:01:55] "[36mGET /js/auth.js HTTP/1.1[0m" 304 -
+2026-03-15 13:01:55,442 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:01:55] "[36mGET /js/main.js HTTP/1.1[0m" 304 -
+2026-03-15 13:01:55,451 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:01:55] "GET /css/style.css HTTP/1.1" 200 -
+2026-03-15 13:01:55,459 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:01:55] "GET /js/login.js HTTP/1.1" 200 -
+2026-03-15 13:01:56,061 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:01:56] "[36mGET / HTTP/1.1[0m" 304 -
+2026-03-15 13:01:56,071 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:01:56] "[36mGET /js/auth.js HTTP/1.1[0m" 304 -
+2026-03-15 13:01:56,071 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:01:56] "[36mGET /css/style.css HTTP/1.1[0m" 304 -
+2026-03-15 13:01:56,074 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:01:56] "[36mGET /js/main.js HTTP/1.1[0m" 304 -
+2026-03-15 13:01:56,075 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:01:56] "[36mGET /js/login.js HTTP/1.1[0m" 304 -
+2026-03-15 13:02:00,728 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:02:00] "[31m[1mPOST /api/login HTTP/1.1[0m" 401 -
+2026-03-15 13:02:01,414 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:02:01] "[31m[1mPOST /api/login HTTP/1.1[0m" 401 -
+2026-03-15 13:02:01,578 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:02:01] "[31m[1mPOST /api/login HTTP/1.1[0m" 401 -
+2026-03-15 13:05:06,097 - __main__ - INFO - 🚀 Запуск Alien Signal Classifier v1.0
+2026-03-15 13:05:06,098 - __main__ - INFO - 📁 Режим: DEBUG
+2026-03-15 13:05:06,098 - __main__ - INFO - 🔗 Сервер: http://127.0.0.1:5000
+2026-03-15 13:05:06,117 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2026-03-15 13:05:06,117 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-15 13:05:06,118 - werkzeug - INFO -  * Restarting with stat
+2026-03-15 13:05:06,825 - __main__ - INFO - 🚀 Запуск Alien Signal Classifier v1.0
+2026-03-15 13:05:06,826 - __main__ - INFO - 📁 Режим: DEBUG
+2026-03-15 13:05:06,826 - __main__ - INFO - 🔗 Сервер: http://127.0.0.1:5000
+2026-03-15 13:05:06,838 - werkzeug - WARNING -  * Debugger is active!
+2026-03-15 13:05:06,839 - werkzeug - INFO -  * Debugger PIN: 338-347-062
+2026-03-15 13:05:11,999 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:05:11] "[36mGET / HTTP/1.1[0m" 304 -
+2026-03-15 13:05:12,007 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:05:12] "[36mGET /css/style.css HTTP/1.1[0m" 304 -
+2026-03-15 13:05:12,010 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:05:12] "[36mGET /js/auth.js HTTP/1.1[0m" 304 -
+2026-03-15 13:05:12,011 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:05:12] "[36mGET /js/main.js HTTP/1.1[0m" 304 -
+2026-03-15 13:05:12,014 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:05:12] "[36mGET /js/login.js HTTP/1.1[0m" 304 -
+2026-03-15 13:05:19,638 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:05:19] "[31m[1mPOST /api/login HTTP/1.1[0m" 401 -
+2026-03-15 13:05:24,915 - werkzeug - INFO -  * Detected change in 'c:\\Users\\anchu\\OneDrive\\Desktop\\predproof\\pokemon\\krevetki_predprof\\backend\\database.py', reloading
+2026-03-15 13:05:25,039 - werkzeug - INFO -  * Restarting with stat
+2026-03-15 13:05:25,805 - __main__ - INFO - 🚀 Запуск Alien Signal Classifier v1.0
+2026-03-15 13:05:25,806 - __main__ - INFO - 📁 Режим: DEBUG
+2026-03-15 13:05:25,806 - __main__ - INFO - 🔗 Сервер: http://127.0.0.1:5000
+2026-03-15 13:05:25,817 - werkzeug - WARNING -  * Debugger is active!
+2026-03-15 13:05:25,819 - werkzeug - INFO -  * Debugger PIN: 338-347-062
+2026-03-15 13:05:58,870 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:05:58] "[31m[1mPOST /api/login HTTP/1.1[0m" 401 -
+2026-03-15 13:07:24,808 - __main__ - INFO - 🚀 Запуск Alien Signal Classifier v1.0
+2026-03-15 13:07:24,808 - __main__ - INFO - 📁 Режим: DEBUG
+2026-03-15 13:07:24,808 - __main__ - INFO - 🔗 Сервер: http://127.0.0.1:5000
+2026-03-15 13:07:24,831 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2026-03-15 13:07:24,831 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-15 13:07:24,832 - werkzeug - INFO -  * Restarting with stat
+2026-03-15 13:07:25,566 - __main__ - INFO - 🚀 Запуск Alien Signal Classifier v1.0
+2026-03-15 13:07:25,566 - __main__ - INFO - 📁 Режим: DEBUG
+2026-03-15 13:07:25,566 - __main__ - INFO - 🔗 Сервер: http://127.0.0.1:5000
+2026-03-15 13:07:25,576 - werkzeug - WARNING -  * Debugger is active!
+2026-03-15 13:07:25,578 - werkzeug - INFO -  * Debugger PIN: 338-347-062
+2026-03-15 13:07:33,997 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:07:33] "GET / HTTP/1.1" 200 -
+2026-03-15 13:07:34,005 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:07:34] "[36mGET /css/style.css HTTP/1.1[0m" 304 -
+2026-03-15 13:07:34,006 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:07:34] "[36mGET /js/auth.js HTTP/1.1[0m" 304 -
+2026-03-15 13:07:34,008 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:07:34] "[36mGET /js/main.js HTTP/1.1[0m" 304 -
+2026-03-15 13:07:34,011 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:07:34] "[36mGET /js/login.js HTTP/1.1[0m" 304 -
+2026-03-15 13:07:40,871 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:07:40] "[31m[1mPOST /api/login HTTP/1.1[0m" 401 -
+2026-03-15 13:07:48,475 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 13:07:48] "[31m[1mPOST /api/login HTTP/1.1[0m" 401 -
+2026-03-15 13:08:35,825 - werkzeug - INFO -  * Detected change in 'c:\\Users\\anchu\\OneDrive\\Desktop\\predproof\\pokemon\\krevetki_predprof\\backend\\app.py', reloading
+2026-03-15 13:08:35,985 - werkzeug - INFO -  * Restarting with stat
+2026-03-15 13:08:36,774 - __main__ - INFO - 🚀 Запуск Alien Signal Classifier v1.0
+2026-03-15 13:08:36,774 - __main__ - INFO - 📁 Режим: DEBUG
+2026-03-15 13:08:36,775 - __main__ - INFO - 🔗 Сервер: http://127.0.0.1:5000
+2026-03-15 13:08:36,785 - werkzeug - WARNING -  * Debugger is active!
+2026-03-15 13:08:36,787 - werkzeug - INFO -  * Debugger PIN: 338-347-062
+2026-03-15 13:08:39,806 - werkzeug - INFO -  * Detected change in 'c:\\Users\\anchu\\OneDrive\\Desktop\\predproof\\pokemon\\krevetki_predprof\\backend\\database.py', reloading
+2026-03-15 13:08:39,926 - werkzeug - INFO -  * Restarting with stat

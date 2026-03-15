@@ -17,13 +17,12 @@ if backend_dir not in sys.path:
 # Стандартные импорты
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-import sqlite3
 import hashlib
 import numpy as np
 from datetime import datetime
 
-# Наши модули (теперь найдутся!)
-from database import init_db, get_user, create_user, get_all_users
+# Наши модули (✅ УБРАЛИ init_db из импорта)
+from database import get_user, create_user, get_all_users, delete_user, update_last_login
 from auth import generate_token, verify_token, hash_password
 from model.neural_net import AlienSignalNet
 from model.trainer import ModelTrainer
@@ -51,7 +50,7 @@ def _initialize_app():
     _initialized = True
     
     try:
-        init_db(Config.DATABASE_PATH)
+        # ✅ init_db() больше не нужен — таблица создаётся автоматически при импорте database.py
         
         if not os.path.exists(Config.TRAIN_DATA_PATH):
             print(f"⚠️ Нет файла данных: {Config.TRAIN_DATA_PATH}")
@@ -107,24 +106,36 @@ def serve_js(filename):
 
 @app.route('/api/login', methods=['POST'])
 def login():
+    """
+    Авторизация пользователя.
+    ✅ Принимает данные из JSON тела запроса
+    """
     data = request.get_json()
+    print(data)
     if not data or 'username' not in data or 'password' not in data:
-        return jsonify({'error': 'Username and password required'}), 400
+        return jsonify({'error': 'Missing username or password'}), 400
     
+    # Хэшируем пароль для сравнения с БД
     password_hash = hash_password(data['password'])
+    
+    # Ищем пользователя в БД
     user = get_user(data['username'], password_hash)
     
     if not user:
         return jsonify({'error': 'Invalid credentials'}), 401
     
+    # ✅ Обновляем last_login
+    update_last_login(user['username'])
+    
+    # Генерируем токен сессии
     token = generate_token(user['username'], user['role'])
+    
     return jsonify({
         'token': token,
         'role': user['role'],
         'name': user['name'],
         'surname': user['surname']
     })
-
 
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -256,7 +267,7 @@ def list_users():
         'name': u['name'],
         'surname': u['surname'],
         'role': u['role'],
-        'created_at': u['created_at']
+        'created_at': u['created_at'].isoformat() if u['created_at'] else None
     } for u in users])
 
 

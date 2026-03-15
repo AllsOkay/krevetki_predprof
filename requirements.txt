@@ -1,32 +1,8 @@
-# requirements.txt
-# Зависимости Python для проекта
-# Установка: pip install -r requirements.txt
-
-# === WEB FRAMEWORK ===
-Flask==2.3.3
-Flask-CORS==4.0.0
-python-dotenv==1.0.0
-
-# === НАУЧНЫЙ СТЕК ===
-numpy==1.24.3
-scipy==1.10.1
-
-# === РАБОТА С ДАННЫМИ ===
-# Для работы с .npz файлами не нужны доп. библиотеки (numpy справляется)
-
-# === КРИПТОГРАФИЯ ===
-# Для хэширования паролей используем встроенный hashlib
-
-# === ТЕСТИРОВАНИЕ ===
-pytest==7.4.0
-pytest-cov==4.1.0
-
-# === ОПЦИОНАЛЬНО: для работы с Yandex Cloud ===
-# yandexcloud==0.243.0
-# requests==2.31.0
-
-# === ДЛЯ РАЗРАБОТКИ ===
-# black==23.7.0          # автоформатирование кода
-# flake8==6.1.0          # линтер
-# mypy==1.5.0            # проверка типов
+flask
+Flask-CORS
+python-dotenv
+numpy
+scipy
+pytest
+pytest-cov
 sqlalchemy

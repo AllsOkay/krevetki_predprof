@@ -1,3 +1,5 @@
+<!-- frontend/dashboard.html -->
+<!-- Панель пользователя: аналитика, загрузка данных, графики -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -5,11 +7,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🦐 Alien Classifier | Панель пользователя</title>
     <link rel="stylesheet" href="/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js для графиков -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 </head>
 <body>
+    <!-- Навигация -->
     <nav class="navbar">
         <a href="/dashboard" class="nav-brand">Alien Classifier</a>
         <div class="nav-links">
@@ -19,6 +21,7 @@
     </nav>
 
     <main class="container">
+        <!-- Приветствие пользователя -->
         <div class="card animate-fade-in">
             <h2>👋 Добро пожаловать, <span id="userName">Пользователь</span>!</h2>
             <p style="color: var(--text-secondary);">
@@ -26,6 +29,7 @@
             </p>
         </div>
 
+        <!-- Секция загрузки тестовых данных -->
         <div class="card animate-fade-in" style="animation-delay: 0.1s;">
             <h3>📤 Загрузка тестового набора данных</h3>
             <p style="margin-bottom: 16px; color: var(--text-secondary);">
@@ -49,40 +53,28 @@
                 <div class="status-badge status-warning">⏳ Обработка...</div>
             </div>
 
-            <!-- ✅ Обновлённый блок результатов с тестовыми метриками -->
-            <div id="predictionResults" class="hidden">
-                <!-- ✅ Выделенный блок тестовых метрик -->
-                <div class="test-metrics-card">
-                    <h4><i class="fas fa-vial"></i> Метрики на тестовом наборе</h4>
-                    <div class="test-metrics-grid">
-                        <div class="test-metric-item">
-                            <div class="metric-label">Точность (Accuracy)</div>
-                            <div class="metric-value high" id="resultAccuracy">-</div>
-                        </div>
-                        <div class="test-metric-item">
-                            <div class="metric-label">Потери (Loss)</div>
-                            <div class="metric-value" id="resultLoss">-</div>
-                        </div>
-                        <div class="test-metric-item">
-                            <div class="metric-label">Записей обработано</div>
-                            <div class="metric-value" id="resultCount">-</div>
-                        </div>
-                        <div class="test-metric-item">
-                            <div class="metric-label">Верно определено</div>
-                            <div class="metric-value high" id="resultCorrect">-</div>
-                        </div>
+            <div id="predictionResults" class="hidden" style="margin-top: 20px; padding: 16px; background: var(--bg-secondary); border-radius: var(--border-radius);">
+                <h4>📊 Результаты классификации</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 16px 0;">
+                    <div>
+                        <strong>Точность:</strong>
+                        <span id="resultAccuracy" style="color: var(--shrimp-dark); font-size: 1.2rem;">-</span>
+                    </div>
+                    <div>
+                        <strong>Потери:</strong>
+                        <span id="resultLoss" style="color: var(--shrimp-dark); font-size: 1.2rem;">-</span>
+                    </div>
+                    <div>
+                        <strong>Записей:</strong>
+                        <span id="resultCount" style="color: var(--shrimp-dark); font-size: 1.2rem;">-</span>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- Секция аналитики: 4 требуемых графика -->
         <div class="card animate-fade-in" style="animation-delay: 0.2s;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                <h3>📈 Аналитика модели</h3>
-                <button class="btn btn-secondary" onclick="window.Charts?.resetZoom()" style="padding: 8px 16px; font-size: 0.9rem;">
-                    <i class="fas fa-compress-arrows-alt"></i> Сбросить масштаб
-                </button>
-            </div>
+            <h3>📈 Аналитика модели</h3>
             
             <h4 style="margin: 20px 0 12px;">1. Точность на валидации по эпохам</h4>
             <div class="chart-container">
@@ -105,17 +97,19 @@
             </div>
         </div>
 
+        <!-- Информация о модели -->
         <div class="card animate-fade-in" style="animation-delay: 0.3s;">
             <h3>🤖 Информация о модели</h3>
-            <div class="info-grid">
-                <div class="info-grid-item"><strong>Статус:</strong> <span id="modelStatus">Загрузка...</span></div>
-                <div class="info-grid-item"><strong>Классов:</strong> <span id="modelClasses">-</span></div>
-                <div class="info-grid-item"><strong>Параметров:</strong> <span id="modelParams">-</span></div>
-                <div class="info-grid-item"><strong>Обучена:</strong> <span id="modelTrained">-</span></div>
+            <div id="modelInfo" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                <div><strong>Статус:</strong> <span id="modelStatus">Загрузка...</span></div>
+                <div><strong>Классов:</strong> <span id="modelClasses">-</span></div>
+                <div><strong>Параметров:</strong> <span id="modelParams">-</span></div>
+                <div><strong>Обучена:</strong> <span id="modelTrained">-</span></div>
             </div>
         </div>
     </main>
 
+    <!-- Скрипты -->
     <script src="/js/auth.js"></script>
     <script src="/js/charts.js"></script>
     <script src="/js/upload.js"></script>

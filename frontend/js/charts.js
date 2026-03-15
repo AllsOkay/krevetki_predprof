@@ -1,6 +1,5 @@
 // frontend/js/charts.js
 // Модуль визуализации: создание и обновление графиков с Chart.js
-// ✅ Поддержка масштабирования (zoom) и адаптивности
 
 const charts = {};
 
@@ -9,6 +8,13 @@ const charts = {};
  * @param {Object} analyticsData - Данные от API /api/analytics
  */
 function initCharts(analyticsData) {
+    console.log('📊 Инициализация графиков...', analyticsData);
+    
+    if (!analyticsData) {
+        console.warn('⚠️ Нет данных для графиков');
+        return;
+    }
+    
     if (analyticsData.accuracy_vs_epochs) {
         initAccuracyChart(analyticsData.accuracy_vs_epochs);
     }
@@ -25,23 +31,7 @@ function initCharts(analyticsData) {
         initTop5Chart(analyticsData.top5_classes);
     }
     
-    // ✅ Добавляем подсказку о масштабировании
-    addZoomHint();
-}
-
-/**
- * Добавляет подсказку о возможности масштабирования графиков
- */
-function addZoomHint() {
-    const chartContainers = document.querySelectorAll('.chart-container');
-    chartContainers.forEach(container => {
-        if (!container.querySelector('.chart-zoom-hint')) {
-            const hint = document.createElement('div');
-            hint.className = 'chart-zoom-hint';
-            hint.innerHTML = '<i class="fas fa-search-plus"></i> Масштабирование: колёсико мыши или щипок на сенсорном экране';
-            container.appendChild(hint);
-        }
-    });
+    console.log('✅ Графики инициализированы');
 }
 
 /**
@@ -49,25 +39,30 @@ function addZoomHint() {
  */
 function initAccuracyChart(data) {
     const ctx = document.getElementById('accuracyChart');
-    if (!ctx) return;
+    if (!ctx) {
+        console.warn('⚠️ Canvas accuracyChart не найден');
+        return;
+    }
     
-    if (charts.accuracy) charts.accuracy.destroy();
+    if (charts.accuracy) {
+        charts.accuracy.destroy();
+    }
     
     charts.accuracy = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: data.epochs,
+            labels: data.epochs || [],
             datasets: [
                 {
                     label: 'Точность (обучение)',
-                    data: data.accuracy,
+                    data: data.accuracy || [],
                     borderColor: '#FF6B9D',
                     backgroundColor: 'rgba(255, 107, 157, 0.1)',
                     borderWidth: 2,
                     fill: true,
                     tension: 0.3,
-                    pointRadius: 4,
-                    pointHoverRadius: 6
+                    pointRadius: 3,
+                    pointHoverRadius: 5
                 },
                 {
                     label: 'Точность (валидация)',
@@ -78,21 +73,8 @@ function initAccuracyChart(data) {
                     borderDash: [5, 5],
                     fill: false,
                     tension: 0.3,
-                    pointRadius: 4,
-                    pointHoverRadius: 6
-                },
-                // ✅ Добавляем точность на тесте если есть
-                {
-                    label: 'Точность (тест)',
-                    data: data.test_accuracy || [],
-                    borderColor: '#81C784',
-                    backgroundColor: 'rgba(129, 199, 132, 0.1)',
-                    borderWidth: 3,
-                    borderDash: [10, 5],
-                    fill: false,
-                    tension: 0.3,
-                    pointRadius: 5,
-                    pointHoverRadius: 7
+                    pointRadius: 3,
+                    pointHoverRadius: 5
                 }
             ]
         },
@@ -110,35 +92,10 @@ function initAccuracyChart(data) {
                     labels: { usePointStyle: true }
                 },
                 tooltip: {
-                    mode: 'index',
-                    intersect: false,
                     callbacks: {
                         label: function(context) {
                             return context.dataset.label + ': ' + (context.parsed.y * 100).toFixed(2) + '%';
                         }
-                    }
-                },
-                // ✅ Настройки зума
-                zoom: {
-                    pan: {
-                        enabled: true,
-                        mode: 'xy',
-                    },
-                    zoom: {
-                        wheel: {
-                            enabled: true,
-                        },
-                        pinch: {
-                            enabled: true,
-                        },
-                        mode: 'xy',
-                        onZoomComplete: function({chart}) {
-                            chart.update('none');
-                        }
-                    },
-                    limits: {
-                        x: { min: 'original', max: 'original' },
-                        y: { min: 0, max: 1 }
                     }
                 }
             },
@@ -158,14 +115,11 @@ function initAccuracyChart(data) {
                     },
                     grid: { color: 'rgba(0,0,0,0.05)' }
                 }
-            },
-            interaction: {
-                mode: 'nearest',
-                axis: 'x',
-                intersect: false
             }
         }
     });
+    
+    console.log('✅ График точности создан');
 }
 
 /**
@@ -173,9 +127,14 @@ function initAccuracyChart(data) {
  */
 function initClassDistributionChart(data) {
     const ctx = document.getElementById('classDistributionChart');
-    if (!ctx) return;
+    if (!ctx) {
+        console.warn('⚠️ Canvas classDistributionChart не найден');
+        return;
+    }
     
-    if (charts.classDist) charts.classDist.destroy();
+    if (charts.classDist) {
+        charts.classDist.destroy();
+    }
     
     const colors = [
         '#FF6B9D', '#FF8E53', '#FFB347', '#C2185B', '#4FC3F7',
@@ -185,10 +144,10 @@ function initClassDistributionChart(data) {
     charts.classDist = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: data.classes.map(c => `Цивилизация #${c}`),
+            labels: data.classes.map(c => `Класс #${c}`),
             datasets: [{
                 label: 'Количество записей',
-                data: data.counts,
+                data: data.counts || [],
                 backgroundColor: data.counts.map((_, i) => colors[i % colors.length]),
                 borderWidth: 1,
                 borderColor: '#fff'
@@ -208,15 +167,6 @@ function initClassDistributionChart(data) {
                     callbacks: {
                         label: ctx => `Записей: ${ctx.parsed.y}`
                     }
-                },
-                // ✅ Зум только по Y для столбчатых диаграмм
-                zoom: {
-                    pan: { enabled: true, mode: 'y' },
-                    zoom: {
-                        wheel: { enabled: true },
-                        pinch: { enabled: true },
-                        mode: 'y'
-                    }
                 }
             },
             scales: {
@@ -231,6 +181,8 @@ function initClassDistributionChart(data) {
             }
         }
     });
+    
+    console.log('✅ График распределения создан');
 }
 
 /**
@@ -238,9 +190,14 @@ function initClassDistributionChart(data) {
  */
 function initPerRecordChart(accuracies) {
     const ctx = document.getElementById('perRecordChart');
-    if (!ctx) return;
+    if (!ctx) {
+        console.warn('⚠️ Canvas perRecordChart не найден');
+        return;
+    }
     
-    if (charts.perRecord) charts.perRecord.destroy();
+    if (charts.perRecord) {
+        charts.perRecord.destroy();
+    }
     
     const displayCount = Math.min(100, accuracies.length);
     const labels = accuracies.slice(0, displayCount).map((_, i) => `#${i+1}`);
@@ -271,15 +228,6 @@ function initPerRecordChart(accuracies) {
                     callbacks: {
                         label: ctx => ctx.parsed.y === 1 ? '✅ Верно' : '❌ Ошибка'
                     }
-                },
-                // ✅ Зум по X для прокрутки записей
-                zoom: {
-                    pan: { enabled: true, mode: 'x' },
-                    zoom: {
-                        wheel: { enabled: true },
-                        pinch: { enabled: true },
-                        mode: 'x'
-                    }
                 }
             },
             scales: {
@@ -297,6 +245,8 @@ function initPerRecordChart(accuracies) {
             }
         }
     });
+    
+    console.log('✅ График по записям создан');
 }
 
 /**
@@ -304,9 +254,14 @@ function initPerRecordChart(accuracies) {
  */
 function initTop5Chart(data) {
     const ctx = document.getElementById('top5Chart');
-    if (!ctx) return;
+    if (!ctx) {
+        console.warn('⚠️ Canvas top5Chart не найден');
+        return;
+    }
     
-    if (charts.top5) charts.top5.destroy();
+    if (charts.top5) {
+        charts.top5.destroy();
+    }
     
     const total = data.counts.reduce((a, b) => a + b, 0);
     
@@ -315,7 +270,7 @@ function initTop5Chart(data) {
         data: {
             labels: data.classes.map(c => `Класс #${c}`),
             datasets: [{
-                data: data.counts,
+                data: data.counts || [],
                 backgroundColor: [
                     '#FF6B9D', '#FF8E53', '#FFB347', '#C2185B', '#4FC3F7'
                 ],
@@ -340,7 +295,7 @@ function initTop5Chart(data) {
                     callbacks: {
                         label: ctx => {
                             const value = ctx.parsed;
-                            const percent = ((value / total) * 100).toFixed(1);
+                            const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
                             return `${ctx.label}: ${value} записей (${percent}%)`;
                         }
                     }
@@ -348,32 +303,46 @@ function initTop5Chart(data) {
             }
         }
     });
+    
+    console.log('✅ График топ-5 создан');
 }
 
 /**
  * Обновление всех графиков новыми данными
  */
 function updateCharts(newData) {
+    console.log('🔄 Обновление графиков...', newData);
+    
+    if (!newData) return;
+    
     if (newData.accuracy_vs_epochs && charts.accuracy) {
         const d = newData.accuracy_vs_epochs;
-        charts.accuracy.data.labels = d.epochs;
-        charts.accuracy.data.datasets[0].data = d.accuracy;
+        charts.accuracy.data.labels = d.epochs || [];
+        charts.accuracy.data.datasets[0].data = d.accuracy || [];
         charts.accuracy.data.datasets[1].data = d.val_accuracy || [];
-        if (d.test_accuracy) {
-            charts.accuracy.data.datasets[2].data = d.test_accuracy;
-        }
-        charts.accuracy.update();
+        charts.accuracy.update('none');
+        console.log('✅ График точности обновлён');
     }
     
     if (newData.class_distribution && charts.classDist) {
         const d = newData.class_distribution;
-        charts.classDist.data.labels = d.classes.map(c => `Цивилизация #${c}`);
-        charts.classDist.data.datasets[0].data = d.counts;
-        charts.classDist.update();
+        charts.classDist.data.labels = d.classes.map(c => `Класс #${c}`);
+        charts.classDist.data.datasets[0].data = d.counts || [];
+        charts.classDist.update('none');
+        console.log('✅ График распределения обновлён');
     }
     
-    if (newData.per_record_accuracy && charts.perRecord) {
+    if (newData.per_record_accuracy) {
         initPerRecordChart(newData.per_record_accuracy);
+        console.log('✅ График по записям обновлён');
+    }
+    
+    if (newData.top5_classes && charts.top5) {
+        const d = newData.top5_classes;
+        charts.top5.data.labels = d.classes.map(c => `Класс #${c}`);
+        charts.top5.data.datasets[0].data = d.counts || [];
+        charts.top5.update('none');
+        console.log('✅ График топ-5 обновлён');
     }
 }
 
@@ -381,24 +350,34 @@ function updateCharts(newData) {
  * Уничтожение всех графиков
  */
 function destroyCharts() {
-    Object.values(charts).forEach(chart => chart?.destroy());
+    Object.values(charts).forEach(chart => {
+        if (chart) chart.destroy();
+    });
     Object.keys(charts).forEach(key => delete charts[key]);
+    console.log('🗑️ Графики уничтожены');
 }
 
 /**
- * Сброс масштабирования всех графиков
+ * Проверка что Chart.js загружен
  */
-function resetZoom() {
-    Object.values(charts).forEach(chart => {
-        if (chart && chart.resetZoom) {
-            chart.resetZoom();
-        }
-    });
+function checkChartJS() {
+    if (typeof Chart === 'undefined') {
+        console.error('❌ Chart.js не загружен! Проверьте подключение CDN');
+        return false;
+    }
+    console.log('✅ Chart.js загружен');
+    return true;
 }
 
+// Экспорт для использования в других модулях
 window.Charts = {
     init: initCharts,
     update: updateCharts,
     destroy: destroyCharts,
-    resetZoom: resetZoom
+    checkChartJS: checkChartJS
 };
+
+// Автопроверка при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    checkChartJS();
+});

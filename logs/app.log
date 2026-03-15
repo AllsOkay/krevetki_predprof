@@ -1,0 +1,25 @@
+2026-03-15 12:06:00,335 - __main__ - INFO - 🚀 Запуск Alien Signal Classifier v1.0
+2026-03-15 12:06:00,335 - __main__ - INFO - 📁 Режим: DEBUG
+2026-03-15 12:06:00,335 - __main__ - INFO - 🔗 Сервер: http://127.0.0.1:5000
+2026-03-15 12:06:00,397 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2026-03-15 12:06:00,397 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-15 12:06:00,399 - werkzeug - INFO -  * Restarting with stat
+2026-03-15 12:06:00,918 - __main__ - INFO - 🚀 Запуск Alien Signal Classifier v1.0
+2026-03-15 12:06:00,918 - __main__ - INFO - 📁 Режим: DEBUG
+2026-03-15 12:06:00,920 - __main__ - INFO - 🔗 Сервер: http://127.0.0.1:5000
+2026-03-15 12:06:00,931 - werkzeug - WARNING -  * Debugger is active!
+2026-03-15 12:06:00,932 - werkzeug - INFO -  * Debugger PIN: 338-347-062
+2026-03-15 12:06:09,521 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:09] "GET / HTTP/1.1" 200 -
+2026-03-15 12:06:09,529 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:09] "[33mGET /css/style.css HTTP/1.1[0m" 404 -
+2026-03-15 12:06:09,552 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:09] "GET /js/auth.js HTTP/1.1" 200 -
+2026-03-15 12:06:09,565 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:09] "GET /js/main.js HTTP/1.1" 200 -
+2026-03-15 12:06:09,616 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:09] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2026-03-15 12:06:14,754 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:14] "GET /?username=12&password=admin123 HTTP/1.1" 200 -
+2026-03-15 12:06:14,764 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:14] "[33mGET /css/style.css HTTP/1.1[0m" 404 -
+2026-03-15 12:06:14,767 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:14] "[36mGET /js/auth.js HTTP/1.1[0m" 304 -
+2026-03-15 12:06:14,768 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:14] "[36mGET /js/main.js HTTP/1.1[0m" 304 -
+2026-03-15 12:06:18,815 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:18] "GET /?username=1234567&password=admin123 HTTP/1.1" 200 -
+2026-03-15 12:06:18,823 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:18] "[33mGET /css/style.css HTTP/1.1[0m" 404 -
+2026-03-15 12:06:18,824 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:18] "[36mGET /js/auth.js HTTP/1.1[0m" 304 -
+2026-03-15 12:06:18,825 - werkzeug - INFO - 127.0.0.1 - - [15/Mar/2026 12:06:18] "[36mGET /js/main.js HTTP/1.1[0m" 304 -

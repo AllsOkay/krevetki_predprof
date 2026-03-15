@@ -142,7 +142,7 @@ input::placeholder {
     color: #999;
 }
 
-/* ✅ ИСПРАВЛЕНИЕ: Стили для автозаполнения браузера (убираем "видимый" пароль) */
+/* ✅ Стили для автозаполнения браузера */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
@@ -231,6 +231,22 @@ input:-webkit-autofill:active {
     background: var(--bg-secondary);
     border-radius: var(--border-radius);
     padding: 16px;
+}
+
+/* ✅ Подсказка для масштабирования графиков */
+.chart-zoom-hint {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 8px;
+    padding: 8px;
+    background: rgba(255, 107, 157, 0.1);
+    border-radius: 8px;
+}
+
+.chart-zoom-hint i {
+    margin-right: 6px;
+    color: var(--shrimp-pink);
 }
 
 /* Анимация появления элементов */
@@ -551,4 +567,55 @@ table th, table td {
     color: var(--shrimp-dark);
     font-size: 1.2rem;
     font-weight: 600;
+}
+
+/* ✅ Тестовые метрики - выделенный блок */
+.test-metrics-card {
+    background: linear-gradient(135deg, var(--shrimp-light) 0%, rgba(79, 195, 247, 0.1) 100%);
+    border: 2px solid var(--shrimp-pink);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.test-metrics-card h4 {
+    color: var(--shrimp-dark);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.test-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.test-metric-item {
+    background: var(--bg-primary);
+    padding: 16px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: var(--shadow-soft);
+}
+
+.test-metric-item .metric-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.test-metric-item .metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--shrimp-dark);
+}
+
+.test-metric-item .metric-value.high {
+    color: #2E7D32;
+}
+
+.test-metric-item .metric-value.low {
+    color: #C62828;
 }

@@ -11,23 +11,8 @@ from config import Config
 # === ХЭШИРОВАНИЕ ПАРОЛЕЙ ===
 
 def hash_password(password: str, salt: Optional[str] = None) -> str:
-    """
-    Хэширует пароль с использованием соли и SHA-256.
-    
-    :param password: Исходный пароль пользователя
-    :param salt: Опциональная соль (генерируется если не передана)
-    :return: Строка формата "salt$hash" для хранения в БД
-    """
-    # Генерируем случайную соль если не передана
-    if salt is None:
-        salt = secrets.token_hex(16)
-    
-    # Комбинируем соль и пароль, затем хэшируем
-    salted_password = f"{salt}${password}"
-    password_hash = hashlib.sha256(salted_password.encode('utf-8')).hexdigest()
-    
-    # Возвращаем соль и хэш вместе для последующей проверки
-    return f"{salt}${password_hash}"
+    password_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
+    return f"{password_hash}"
 
 
 def verify_password(password: str, stored_hash: str) -> bool:

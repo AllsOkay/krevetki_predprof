@@ -41,6 +41,8 @@ _initialized = False  # Флаг для однократной инициали�
 
 
 # === ✅ ИНИЦИАЛИЗАЦИЯ — БЕЗ @app.before_first_request ===
+# backend/app.py
+# === ✅ ИНИЦИАЛИЗАЦИЯ — ЗАГРУЗКА ГОТОВОЙ МОДЕЛИ ===
 def _initialize_app():
     """Внутренняя функция инициализации (вызывается один раз)"""
     global trainer, predictor, model, _initialized
@@ -50,26 +52,23 @@ def _initialize_app():
     _initialized = True
     
     try:
-        # ✅ init_db() больше не нужен — таблица создаётся автоматически при импорте database.py
-        
-        if not os.path.exists(Config.TRAIN_DATA_PATH):
-            print(f"⚠️ Нет файла данных: {Config.TRAIN_DATA_PATH}")
-            print("💡 Загрузите train.npz или обучите модель через /api/train")
+        # ✅ Проверяем есть ли сохранённая модель
+        if os.path.exists(Config.MODEL_SAVE_PATH):
+            print(f"📦 Загрузка модели из {Config.MODEL_SAVE_PATH}...")
+            from model.neural_net import AlienSignalNet
+            model = AlienSignalNet.load(Config.MODEL_SAVE_PATH)
+            predictor = ModelPredictor(model)
+            trainer = ModelTrainer(model, config=Config.TRAIN_CONFIG)
+            print("✅ Модель загружена успешно")
+        else:
+            print(f"⚠️ Модель не найдена: {Config.MODEL_SAVE_PATH}")
+            print("💡 Обучите модель через /api/train или поместите model.pkl")
             return
         
-        train_data = load_dataset(Config.TRAIN_DATA_PATH)
-        train_data['y'] = restore_class_labels(train_data['y'])
-        
-        model = AlienSignalNet(
-            input_shape=train_data['x'].shape[1:],
-            num_classes=len(np.unique(train_data['y']))
-        )
-        trainer = ModelTrainer(model, config=Config.TRAIN_CONFIG)
-        predictor = ModelPredictor(model)
-        print("✅ Модель инициализирована")
-        
     except Exception as e:
-        print(f"⚠️ Ошибка инициализации: {e}")
+        print(f"⚠️ Ошибка загрузки модели: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 @app.before_request

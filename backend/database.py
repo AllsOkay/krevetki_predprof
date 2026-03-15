@@ -4,7 +4,7 @@
 from datetime import datetime
 from typing import Optional, List, Dict
 import hashlib
-
+from auth import hash_password
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, CheckConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -49,12 +49,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-
-def hash_password(password: str) -> str:
-    """Хэширует пароль через SHA-256."""
-    return hashlib.sha256(password.encode()).hexdigest()
-
 
 def create_demo_users():
     """Создаёт демо-пользователей если их нет в базе."""
@@ -123,7 +117,7 @@ def get_user(username: str, password_hash: Optional[str] = None) -> Optional[Dic
             print(password_hash)
             user = db.query(User).filter_by(username=username, password_hash=password_hash).first()
         else:
-            user = db.query(User).filter_by(username=username).first()
+            user = None
 
         if user:
             return {

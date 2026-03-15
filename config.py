@@ -48,8 +48,7 @@ class Config:
     TEST_DATA_PASSWORD = os.getenv('TEST_DATA_PASSWORD', '')
     
     # Путь для сохранения обученной модели
-    MODEL_SAVE_PATH = os.getenv('MODEL_SAVE_PATH', 'models/alien_model.pkl')
-    os.makedirs(os.path.dirname(MODEL_SAVE_PATH), exist_ok=True)
+    MODEL_SAVE_PATH = os.getenv('MODEL_SAVE_PATH', 'alien_model_final.pkl')
     
     # Временная директория для загруженных файлов
     TEMP_DIR = os.getenv('TEMP_DIR', 'temp')

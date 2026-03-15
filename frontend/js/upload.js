@@ -47,9 +47,13 @@ async function handleFileUpload(event) {
             statusDiv.classList.add('hidden');
             resultsDiv.classList.remove('hidden');
             
+            // ✅ Обновляем графики с новыми данными включая тестовые метрики
             if (result.analytics) {
                 window.Charts?.update(result.analytics);
             }
+            
+            // ✅ Прокрутка к результатам
+            resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
         } else {
             statusDiv.innerHTML = `<div class="status-badge status-error">❌ Ошибка: ${result.error}</div>`;
         }
@@ -63,28 +67,56 @@ async function handleFileUpload(event) {
 
 /**
  * Отображение результатов классификации в интерфейсе
+ * ✅ Добавлено отображение всех тестовых метрик
  */
 function displayPredictionResults(result) {
     const accuracyEl = document.getElementById('resultAccuracy');
     const lossEl = document.getElementById('resultLoss');
     const countEl = document.getElementById('resultCount');
+    const correctEl = document.getElementById('resultCorrect');
     
+    // ✅ Точность в процентах с цветовой индикацией
     if (accuracyEl) {
-        accuracyEl.textContent = result.accuracy 
-            ? `${(result.accuracy * 100).toFixed(2)}%` 
-            : 'N/A';
+        const accuracy = result.accuracy || 0;
+        const accuracyPercent = (accuracy * 100).toFixed(2);
+        accuracyEl.textContent = `${accuracyPercent}%`;
+        accuracyEl.className = 'metric-value ' + (accuracy >= 0.8 ? 'high' : 'low');
     }
     
+    // ✅ Потери с 4 знаками после запятой
     if (lossEl) {
-        lossEl.textContent = result.loss ? result.loss.toFixed(4) : 'N/A';
+        const loss = result.loss || 0;
+        lossEl.textContent = loss.toFixed(4);
+        lossEl.className = 'metric-value ' + (loss < 0.5 ? 'high' : 'low');
     }
     
+    // ✅ Количество обработанных записей
     if (countEl) {
         countEl.textContent = result.n_samples || result.predictions?.length || 'N/A';
     }
     
+    // ✅ Количество верно определённых записей
+    if (correctEl && result.n_samples && result.accuracy) {
+        const correct = Math.round(result.n_samples * result.accuracy);
+        correctEl.textContent = `${correct} из ${result.n_samples}`;
+    }
+    
+    // ✅ Логирование для отладки
     if (result.per_class_accuracy) {
         console.log('Per-class accuracy:', result.per_class_accuracy);
+    }
+    
+    // ✅ Обновление графика точности с тестовыми данными
+    if (result.accuracy && window.Charts) {
+        const analytics = {
+            accuracy_vs_epochs: {
+                epochs: [0],
+                accuracy: [],
+                val_accuracy: [],
+                test_accuracy: [result.accuracy]
+            }
+        };
+        window.Charts.update(analytics);
     }
 }
 

@@ -1,5 +1,6 @@
 // frontend/js/charts.js
 // Модуль визуализации: создание и обновление графиков с Chart.js
+// ✅ Поддержка масштабирования (zoom) и адаптивности
 
 const charts = {};
 
@@ -23,6 +24,24 @@ function initCharts(analyticsData) {
     if (analyticsData.top5_classes) {
         initTop5Chart(analyticsData.top5_classes);
     }
+    
+    // ✅ Добавляем подсказку о масштабировании
+    addZoomHint();
+}
+
+/**
+ * Добавляет подсказку о возможности масштабирования графиков
+ */
+function addZoomHint() {
+    const chartContainers = document.querySelectorAll('.chart-container');
+    chartContainers.forEach(container => {
+        if (!container.querySelector('.chart-zoom-hint')) {
+            const hint = document.createElement('div');
+            hint.className = 'chart-zoom-hint';
+            hint.innerHTML = '<i class="fas fa-search-plus"></i> Масштабирование: колёсико мыши или щипок на сенсорном экране';
+            container.appendChild(hint);
+        }
+    });
 }
 
 /**
@@ -46,7 +65,9 @@ function initAccuracyChart(data) {
                     backgroundColor: 'rgba(255, 107, 157, 0.1)',
                     borderWidth: 2,
                     fill: true,
-                    tension: 0.3
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
                 },
                 {
                     label: 'Точность (валидация)',
@@ -56,7 +77,22 @@ function initAccuracyChart(data) {
                     borderWidth: 2,
                     borderDash: [5, 5],
                     fill: false,
-                    tension: 0.3
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                },
+                // ✅ Добавляем точность на тесте если есть
+                {
+                    label: 'Точность (тест)',
+                    data: data.test_accuracy || [],
+                    borderColor: '#81C784',
+                    backgroundColor: 'rgba(129, 199, 132, 0.1)',
+                    borderWidth: 3,
+                    borderDash: [10, 5],
+                    fill: false,
+                    tension: 0.3,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
                 }
             ]
         },
@@ -69,7 +105,42 @@ function initAccuracyChart(data) {
                     text: 'Динамика обучения модели',
                     font: { size: 14 }
                 },
-                legend: { position: 'bottom' }
+                legend: { 
+                    position: 'bottom',
+                    labels: { usePointStyle: true }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + (context.parsed.y * 100).toFixed(2) + '%';
+                        }
+                    }
+                },
+                // ✅ Настройки зума
+                zoom: {
+                    pan: {
+                        enabled: true,
+                        mode: 'xy',
+                    },
+                    zoom: {
+                        wheel: {
+                            enabled: true,
+                        },
+                        pinch: {
+                            enabled: true,
+                        },
+                        mode: 'xy',
+                        onZoomComplete: function({chart}) {
+                            chart.update('none');
+                        }
+                    },
+                    limits: {
+                        x: { min: 'original', max: 'original' },
+                        y: { min: 0, max: 1 }
+                    }
+                }
             },
             scales: {
                 x: {
@@ -80,8 +151,18 @@ function initAccuracyChart(data) {
                     title: { display: true, text: 'Точность' },
                     min: 0,
                     max: 1,
+                    ticks: {
+                        callback: function(value) {
+                            return (value * 100).toFixed(0) + '%';
+                        }
+                    },
                     grid: { color: 'rgba(0,0,0,0.05)' }
                 }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
             }
         }
     });
@@ -109,7 +190,8 @@ function initClassDistributionChart(data) {
                 label: 'Количество записей',
                 data: data.counts,
                 backgroundColor: data.counts.map((_, i) => colors[i % colors.length]),
-                borderWidth: 1
+                borderWidth: 1,
+                borderColor: '#fff'
             }]
         },
         options: {
@@ -121,7 +203,21 @@ function initClassDistributionChart(data) {
                     text: 'Баланс классов в обучающей выборке',
                     font: { size: 14 }
                 },
-                legend: { display: false }
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => `Записей: ${ctx.parsed.y}`
+                    }
+                },
+                // ✅ Зум только по Y для столбчатых диаграмм
+                zoom: {
+                    pan: { enabled: true, mode: 'y' },
+                    zoom: {
+                        wheel: { enabled: true },
+                        pinch: { enabled: true },
+                        mode: 'y'
+                    }
+                }
             },
             scales: {
                 y: {
@@ -170,7 +266,21 @@ function initPerRecordChart(accuracies) {
                     text: `Точность по записям (показано ${displayCount} из ${accuracies.length})`,
                     font: { size: 14 }
                 },
-                legend: { display: false }
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ctx.parsed.y === 1 ? '✅ Верно' : '❌ Ошибка'
+                    }
+                },
+                // ✅ Зум по X для прокрутки записей
+                zoom: {
+                    pan: { enabled: true, mode: 'x' },
+                    zoom: {
+                        wheel: { enabled: true },
+                        pinch: { enabled: true },
+                        mode: 'x'
+                    }
+                }
             },
             scales: {
                 y: {
@@ -198,6 +308,8 @@ function initTop5Chart(data) {
     
     if (charts.top5) charts.top5.destroy();
     
+    const total = data.counts.reduce((a, b) => a + b, 0);
+    
     charts.top5 = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -220,7 +332,19 @@ function initTop5Chart(data) {
                     text: 'Топ-5 классов в валидационной выборке',
                     font: { size: 14 }
                 },
-                legend: { position: 'right' }
+                legend: { 
+                    position: 'right',
+                    labels: { usePointStyle: true }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const value = ctx.parsed;
+                            const percent = ((value / total) * 100).toFixed(1);
+                            return `${ctx.label}: ${value} записей (${percent}%)`;
+                        }
+                    }
+                }
             }
         }
     });
@@ -235,7 +359,21 @@ function updateCharts(newData) {
         charts.accuracy.data.labels = d.epochs;
         charts.accuracy.data.datasets[0].data = d.accuracy;
         charts.accuracy.data.datasets[1].data = d.val_accuracy || [];
+        if (d.test_accuracy) {
+            charts.accuracy.data.datasets[2].data = d.test_accuracy;
+        }
         charts.accuracy.update();
+    }
+    
+    if (newData.class_distribution && charts.classDist) {
+        const d = newData.class_distribution;
+        charts.classDist.data.labels = d.classes.map(c => `Цивилизация #${c}`);
+        charts.classDist.data.datasets[0].data = d.counts;
+        charts.classDist.update();
+    }
+    
+    if (newData.per_record_accuracy && charts.perRecord) {
+        initPerRecordChart(newData.per_record_accuracy);
     }
 }
 
@@ -247,8 +385,20 @@ function destroyCharts() {
     Object.keys(charts).forEach(key => delete charts[key]);
 }
 
+/**
+ * Сброс масштабирования всех графиков
+ */
+function resetZoom() {
+    Object.values(charts).forEach(chart => {
+        if (chart && chart.resetZoom) {
+            chart.resetZoom();
+        }
+    });
+}
+
 window.Charts = {
     init: initCharts,
     update: updateCharts,
-    destroy: destroyCharts
+    destroy: destroyCharts,
+    resetZoom: resetZoom
 };

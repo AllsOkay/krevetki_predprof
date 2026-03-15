@@ -1,5 +1,5 @@
 // frontend/js/auth.js
-// Модуль аутентификации: БЕЗОПАСНЫЙ вход через POST запрос
+// Модуль аутентификации: безопасный вход, восстановление сессии, обработка токенов
 
 /**
  * Глобальный объект для хранения состояния пользователя
@@ -28,16 +28,19 @@ async function login(username, password) {
         const data = await response.json();
         
         if (response.ok) {
+            // ✅ Сохраняем ВСЕ данные пользователя, включая username
             window.currentUser = {
                 token: data.token,
-                username: data.username,
+                username: data.username,  // ← Было пропущено!
                 name: data.name,
                 surname: data.surname,
                 role: data.role
             };
             
+            // Сохраняем в localStorage
             localStorage.setItem('auth_token', data.token);
             localStorage.setItem('user_data', JSON.stringify({
+                username: data.username,  // ← Добавлено!
                 name: data.name,
                 surname: data.surname,
                 role: data.role
@@ -65,19 +68,33 @@ async function checkAuth() {
     }
     
     try {
-        const response = await fetch('/api/health', {
-            headers: { 'Authorization': `Bearer ${token}` }
+        // ✅ Используем endpoint, который проверяет токен (не /api/health!)
+        const response = await fetch('/api/model/info', {
+            headers: {
+                'Authorization': `Bearer ${token}`  // ✅ Добавляем префикс Bearer
+            }
         });
+        
+        // ✅ Обрабатываем 401 — токен истёк или невалиден
+        if (response.status === 401) {
+            console.warn('⚠️ Токен недействителен, выполняем выход');
+            logout();
+            return false;
+        }
         
         if (response.ok) {
             const parsed = JSON.parse(userData);
-            window.currentUser = { token, ...parsed };
+            window.currentUser = { 
+                token, 
+                ...parsed 
+            };
             return true;
         }
     } catch (error) {
         console.warn('Auth check failed:', error);
     }
     
+    // Если проверка не прошла — очищаем данные
     logout();
     return false;
 }
@@ -86,24 +103,43 @@ async function checkAuth() {
  * Выход из системы
  */
 function logout() {
+    // ✅ Опционально: можно отправить запрос на аннулирование токена
+    // fetch('/api/logout', { method: 'POST', headers: getAuthHeaders() });
+    
     window.currentUser = null;
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user_data');
-    window.location.href = '/';
+    
+    // ✅ Перенаправляем на главную, но не если мы уже там
+    if (!window.location.pathname.includes('/index.html') && window.location.pathname !== '/') {
+        window.location.href = '/';
+    }
 }
 
 /**
  * Получение заголовков для авторизованных запросов
+ * ✅ Гарантирует правильный формат: "Bearer <token>"
  */
 function getAuthHeaders() {
+    const token = window.currentUser?.token || localStorage.getItem('auth_token');
+    
+    if (!token) {
+        return { 'Content-Type': 'application/json' };
+    }
+    
+    // ✅ Убираем префикс если он уже есть (защита от дублирования)
+    const cleanToken = token.startsWith('Bearer ') ? token.slice(7) : token;
+    
     return {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${window.currentUser?.token}`
+        'Authorization': `Bearer ${cleanToken}`
     };
 }
 
 /**
  * Проверка роли пользователя
+ * @param {string} role - Требуемая роль ('admin' или 'user')
+ * @returns {boolean} True если роль совпадает
  */
 function hasRole(role) {
     return window.currentUser?.role === role;
@@ -111,25 +147,61 @@ function hasRole(role) {
 
 /**
  * Перенаправление по роли
+ * @param {string} currentPath - Текущий путь страницы
  */
 function redirectByRole(currentPath) {
-    if (window.currentUser?.role === 'admin') {
-        if (!currentPath.includes('admin')) {
+    if (!window.currentUser?.role) return;
+    
+    if (window.currentUser.role === 'admin') {
+        // Админ может заходить куда угодно, но если на главной — отправляем в админку
+        if (currentPath === '/' || currentPath.includes('index.html')) {
             window.location.href = '/admin';
         }
     } else {
+        // Обычный пользователь не должен видеть админку
         if (currentPath.includes('admin')) {
             window.location.href = '/dashboard';
         }
     }
 }
 
-// Экспортируем функции
+/**
+ * ✅ НОВЫЙ МЕТОД: Глобальный обработчик 401 ошибок
+ * Вызывайте его при инициализации приложения для авто-выхода при истечении токена
+ */
+function setupAuthInterceptor() {
+    // Сохраняем оригинальный fetch
+    const originalFetch = window.fetch;
+    
+    window.fetch = async function(...args) {
+        const response = await originalFetch.apply(this, args);
+        
+        // Если получили 401 — токен истёк
+        if (response.status === 401) {
+            const url = args[0];
+            // Игнорируем сам запрос логина и проверки
+            if (!url.includes('/api/login') && !url.includes('/api/health')) {
+                console.warn('🔐 Сессия истекла (401), выполняем выход');
+                logout();
+            }
+        }
+        
+        return response;
+    };
+}
+
+// ✅ Экспортируем все функции
 window.Auth = { 
     login, 
     checkAuth, 
     logout, 
     getAuthHeaders,
     hasRole,
-    redirectByRole
+    redirectByRole,
+    setupAuthInterceptor  // ← Новый метод для глобальной обработки ошибок
 };
+
+// ✅ Авто-инициализация перехватчика (опционально)
+// document.addEventListener('DOMContentLoaded', () => {
+//     window.Auth?.setupAuthInterceptor();
+// });

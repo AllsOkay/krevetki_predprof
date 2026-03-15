@@ -4,39 +4,30 @@
 /**
  * Инициализация приложения при загрузке страницы
  */
-// В конце initApp() добавьте задержку для загрузки Chart.js
 async function initApp() {
-  console.log('🦐 Alien Classifier initializing...');
-  
-  // ✅ Ждём полной загрузки DOM
-  if (document.readyState !== 'complete') {
-    await new Promise(resolve => window.addEventListener('load', resolve));
-  }
-  
-  const isAuthenticated = await window.Auth?.checkAuth();
-  updateUI(isAuthenticated);
-  
-  if (isAuthenticated) {
-    await loadUserData();
+    console.log('🦐 Alien Classifier initializing...');
     
-    // ✅ Проверяем наличие графиков на странице
-    if (document.getElementById('accuracyChart')) {
-      // Небольшая задержка для гарантии загрузки Chart.js
-      setTimeout(async () => {
-        await loadAnalytics();
-      }, 500);
+    const isAuthenticated = await window.Auth?.checkAuth();
+    updateUI(isAuthenticated);
+    
+    if (isAuthenticated) {
+        await loadUserData();
+        
+        if (document.getElementById('accuracyChart')) {
+            await loadAnalytics();
+        }
+        
+        if (window.location.pathname.includes('admin')) {
+            if (!window.Auth?.hasRole('admin')) {
+                window.location.href = '/dashboard';
+            }
+        }
     }
     
-    if (window.location.pathname.includes('admin')) {
-      if (!window.Auth?.hasRole('admin')) {
-        window.location.href = '/dashboard';
-      }
-    }
-  }
-  
-  setupGlobalHandlers();
-  console.log('✓ Application initialized');
+    setupGlobalHandlers();
+    console.log('✓ Application initialized');
 }
+
 /**
  * Обновление UI в зависимости от статуса авторизации
  */
@@ -117,7 +108,9 @@ function updateModelInfo(info) {
     if (trainedEl) trainedEl.textContent = info.is_trained ? 'Да' : 'Нет';
 }
 
-
+/**
+ * Загрузка аналитики для графиков
+ */
 async function loadAnalytics() {
     try {
         const response = await fetch('/api/analytics', {
@@ -127,18 +120,25 @@ async function loadAnalytics() {
         if (response.ok) {
             const analytics = await response.json();
             window.Charts?.init(analytics);
-            
-            // ✅ ОБНОВЛЯЕМ МЕТРИКИ ВНИЗУ
-            updateFooterMetrics(analytics);
         }
     } catch (error) {
         console.error('Failed to load analytics:', error);
-        // ✅ ПОКАЗЫВАЕМ ДЕМО-МЕТРИКИ
-        updateFooterMetrics({ accuracy: 0.87, loss: 0.34, n_samples: 1600 });
-        window.Charts?.init(window.Charts?.DEMO_DATA || null);
+        
+        const chartContainers = document.querySelectorAll('.chart-container');
+        chartContainers.forEach(container => {
+            if (!container.querySelector('.status-badge')) {
+                const errorBadge = document.createElement('div');
+                errorBadge.className = 'status-badge status-error';
+                errorBadge.textContent = '⚠️ Не удалось загрузить данные';
+                container.appendChild(errorBadge);
+            }
+        });
     }
 }
 
+/**
+ * Настройка глобальных обработчиков событий
+ */
 function setupGlobalHandlers() {
     document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
         e.preventDefault();
@@ -172,26 +172,6 @@ function toggleElement(element, show) {
     } else {
         element.classList.add('hidden');
         element.classList.remove('animate-fade-in');
-    }
-}
-/**
- * ✅ Обновление метрик внизу страницы
- */
-function updateFooterMetrics(data) {
-    const accEl = document.getElementById('footerAccuracy');
-    const lossEl = document.getElementById('footerLoss');
-    const samplesEl = document.getElementById('footerSamples');
-    
-    if (accEl) {
-        const acc = data.accuracy || 0.87;
-        accEl.textContent = `${(acc * 100).toFixed(1)}%`;
-        accEl.style.color = acc >= 0.8 ? '#2E7D32' : acc >= 0.6 ? '#F57F17' : '#C62828';
-    }
-    if (lossEl) {
-        lossEl.textContent = (data.loss || 0.34).toFixed(3);
-    }
-    if (samplesEl) {
-        samplesEl.textContent = data.n_samples || 1600;
     }
 }
 

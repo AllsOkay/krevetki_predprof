@@ -1,3 +1,5 @@
+<!-- frontend/dashboard.html -->
+<!-- Панель пользователя: аналитика, загрузка данных, графики -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -5,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🦐 Alien Classifier | Панель пользователя</title>
     <link rel="stylesheet" href="/css/style.css">
-    <!-- ✅ Chart.js ДО всех скриптов -->
+    <!-- Chart.js для графиков -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -19,45 +21,78 @@
     </nav>
 
     <main class="container">
-        <!-- Приветствие -->
+        <!-- Приветствие пользователя -->
         <div class="card animate-fade-in">
             <h2>👋 Добро пожаловать, <span id="userName">Пользователь</span>!</h2>
+            <p style="color: var(--text-secondary);">
+                Используйте панель ниже для анализа инопланетных сигналов
+            </p>
         </div>
 
-        <!-- Загрузка файлов -->
+        <!-- Секция загрузки тестовых данных -->
         <div class="card animate-fade-in" style="animation-delay: 0.1s;">
-            <h3>📤 Загрузка тестовых данных</h3>
+            <h3>📤 Загрузка тестового набора данных</h3>
+            <p style="margin-bottom: 16px; color: var(--text-secondary);">
+                Загрузите файл .npz с тестовыми сигналами для классификации
+            </p>
             <form id="uploadForm" class="form-group">
-                <input type="file" id="testFile" name="file" accept=".npz" required>
+                <input
+                    type="file"
+                    id="testFile"
+                    name="file"
+                    accept=".npz"
+                    required
+                    style="margin-bottom: 12px;"
+                >
                 <button type="submit" class="btn btn-secondary">
-                    <i class="fas fa-upload"></i> Загрузить
+                    <i class="fas fa-upload"></i> Загрузить и классифицировать
                 </button>
             </form>
-            <div id="uploadStatus" class="hidden"></div>
-            <div id="predictionResults" class="hidden"></div>
+
+            <div id="uploadStatus" class="hidden" style="margin-top: 16px;">
+                <div class="status-badge status-warning">⏳ Обработка...</div>
+            </div>
+
+            <div id="predictionResults" class="hidden" style="margin-top: 20px; padding: 16px; background: var(--bg-secondary); border-radius: var(--border-radius);">
+                <h4>📊 Результаты классификации</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 16px 0;">
+                    <div>
+                        <strong>Точность:</strong>
+                        <span id="resultAccuracy" style="color: var(--shrimp-dark); font-size: 1.2rem;">-</span>
+                    </div>
+                    <div>
+                        <strong>Потери:</strong>
+                        <span id="resultLoss" style="color: var(--shrimp-dark); font-size: 1.2rem;">-</span>
+                    </div>
+                    <div>
+                        <strong>Записей:</strong>
+                        <span id="resultCount" style="color: var(--shrimp-dark); font-size: 1.2rem;">-</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- ✅ ГРАФИКИ -->
+        <!-- Секция аналитики: 4 требуемых графика -->
         <div class="card animate-fade-in" style="animation-delay: 0.2s;">
             <h3>📈 Аналитика модели</h3>
             
-            <h4 style="margin: 20px 0 12px;">1. Точность по эпохам</h4>
-            <div class="chart-container" style="height: 350px;">
+            <h4 style="margin: 20px 0 12px;">1. Точность на валидации по эпохам</h4>
+            <div class="chart-container">
                 <canvas id="accuracyChart"></canvas>
             </div>
 
-            <h4 style="margin: 20px 0 12px;">2. Распределение классов</h4>
-            <div class="chart-container" style="height: 350px;">
+            <h4 style="margin: 20px 0 12px;">2. Распределение классов в обучающих данных</h4>
+            <div class="chart-container">
                 <canvas id="classDistributionChart"></canvas>
             </div>
 
-            <h4 style="margin: 20px 0 12px;">3. Точность по записям</h4>
-            <div class="chart-container" style="height: 350px;">
+            <h4 style="margin: 20px 0 12px;">3. Точность определения каждой записи (тест)</h4>
+            <div class="chart-container">
                 <canvas id="perRecordChart"></canvas>
             </div>
 
-            <h4 style="margin: 20px 0 12px;">4. Топ-5 классов</h4>
-            <div class="chart-container" style="height: 350px;">
+            <h4 style="margin: 20px 0 12px;">4. Топ-5 наиболее частых классов (валидация)</h4>
+            <div class="chart-container">
                 <canvas id="top5Chart"></canvas>
             </div>
         </div>
@@ -65,29 +100,16 @@
         <!-- Информация о модели -->
         <div class="card animate-fade-in" style="animation-delay: 0.3s;">
             <h3>🤖 Информация о модели</h3>
-            <div id="modelInfo">
+            <div id="modelInfo" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
                 <div><strong>Статус:</strong> <span id="modelStatus">Загрузка...</span></div>
                 <div><strong>Классов:</strong> <span id="modelClasses">-</span></div>
+                <div><strong>Параметров:</strong> <span id="modelParams">-</span></div>
+                <div><strong>Обучена:</strong> <span id="modelTrained">-</span></div>
             </div>
         </div>
     </main>
-    <!-- ✅ БЛОК С МЕТРИКАМИ ВНИЗУ СТРАНИЦЫ -->
-<div style="position: fixed; bottom: 0; left: 0; right: 0; background: linear-gradient(135deg, #FFF0F5, #FFF8E1); border-top: 3px solid #FF6B9D; padding: 12px 24px; display: flex; justify-content: center; gap: 40px; z-index: 1000; box-shadow: 0 -4px 20px rgba(0,0,0,0.1);">
-    <div style="text-align: center;">
-        <div style="font-size: 0.85rem; color: #666; margin-bottom: 4px;">🎯 Точность</div>
-        <div id="footerAccuracy" style="font-size: 1.4rem; font-weight: bold; color: #2E7D32;">5.96%<div>
-    </div>
-    <div style="text-align: center;">
-        <div style="font-size: 0.85rem; color: #666; margin-bottom: 4px;">📉 Потери</div>
-        <div id="footerLoss" style="font-size: 1.4rem; font-weight: bold; color: #4FC3F7;">0.340</div>
-    </div>
-    <div style="text-align: center;">
-        <div style="font-size: 0.85rem; color: #666; margin-bottom: 4px;">📊 Записей</div>
-        <div id="footerSamples" style="font-size: 1.4rem; font-weight: bold; color: #C2185B;">1600</div>
-    </div>
-</div>
 
-    <!-- ✅ СКРИПТЫ В ПРАВИЛЬНОМ ПОРЯДКЕ -->
+    <!-- Скрипты -->
     <script src="/js/auth.js"></script>
     <script src="/js/charts.js"></script>
     <script src="/js/upload.js"></script>

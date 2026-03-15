@@ -200,9 +200,7 @@ class ModelTrainer:
         
         self.model.is_trained = True
         logger.info(f"✅ Обучение завершено! Лучшая вал. точность: {self.best_val_accuracy:.4f}")
-        # В конце метода train() добавьте:
-        print(f"✅ Обучение завершено. История: {len(self.history['accuracy'])} эпох")
-        print(f"📊 Финальная точность: {self.history['accuracy'][-1]:.4f}")
+        
         return self.history
     
     def get_training_plot_data(self) -> Dict[str, List]:

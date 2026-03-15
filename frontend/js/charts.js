@@ -1,382 +1,424 @@
 // frontend/js/charts.js
-// ✅ ГАРАНТИРОВАННО РАБОТАЮЩИЕ ГРАФИКИ С ДЕМО-ДАННЫМИ
+// Модуль визуализации: создание и обновление графиков с Chart.js
 
-const ChartsModule = (function() {
-    // === ДЕМО-ДАННЫЕ — ВСЕГДА ДОСТУПНЫ ===
-    const DEMO_DATA = {
-        accuracy_vs_epochs: {
-            epochs: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-            accuracy: [0.65, 0.72, 0.78, 0.82, 0.85, 0.87, 0.89, 0.91, 0.92, 0.93],
-            val_accuracy: [0.63, 0.70, 0.76, 0.80, 0.83, 0.85, 0.87, 0.88, 0.89, 0.90]
-        },
-        class_distribution: {
-            classes: [1, 2, 3, 4, 5],
-            counts: [320, 315, 325, 310, 330]
-        },
-        per_record_accuracy: Array(50).fill(1).map((_, i) => i % 7 === 0 ? 0 : 1),
-        top5_classes: {
-            classes: [1, 2, 3, 4, 5],
-            counts: [150, 145, 140, 135, 130]
-        }
-    };
+const charts = {};
 
-    // Хранилище экземпляров графиков
-    const chartInstances = {};
-
-    // === ПРОВЕРКА Chart.js ===
-    function isChartJSLoaded() {
-        if (typeof Chart === 'undefined') {
-            console.error('❌ Chart.js НЕ загружен!');
-            return false;
-        }
-        console.log('✅ Chart.js загружен');
-        return true;
+/**
+ * Инициализация всех графиков на странице
+ * @param {Object} analyticsData - Данные от API /api/analytics
+ */
+function initCharts(analyticsData) {
+    console.log('📊 initCharts вызван с:', analyticsData);
+    
+    // 🔥 Проверка на пустые данные
+    if (!analyticsData?.accuracy_vs_epochs?.accuracy?.length) {
+        console.warn('⚠️ Нет данных для accuracy_vs_epochs — график будет пустым');
     }
-
-    // === ИНИЦИАЛИЗАЦИЯ ВСЕХ ГРАФИКОВ ===
-    function initAll(analyticsData) {
-        console.log('📊 Инициализация графиков...', analyticsData);
-
-        if (!isChartJSLoaded()) {
-            showChartError('Chart.js не загружен');
-            return;
-        }
-
-        // ✅ ВСЕГДА используем данные (реальные или демо)
-        const data = (analyticsData && Object.keys(analyticsData).length > 0) 
-            ? analyticsData 
-            : DEMO_DATA;
-
-        if (!analyticsData || Object.keys(analyticsData).length === 0) {
-            console.warn('⚠️ Нет данных от API, используем демо-данные');
-        }
-
-        // ✅ Создаём все 4 графика
-        createAccuracyChart(data.accuracy_vs_epochs || DEMO_DATA.accuracy_vs_epochs);
-        createClassDistributionChart(data.class_distribution || DEMO_DATA.class_distribution);
-        createPerRecordChart(data.per_record_accuracy || DEMO_DATA.per_record_accuracy);
-        createTop5Chart(data.top5_classes || DEMO_DATA.top5_classes);
-
-        console.log('✅ Все графики созданы');
-    }
-
-    // === ГРАФИК 1: ТОЧНОСТЬ ПО ЭПОХАМ ===
-    function createAccuracyChart(data) {
-        const canvas = document.getElementById('accuracyChart');
-        if (!canvas) {
-            console.warn('⚠️ Canvas accuracyChart не найден');
-            return;
-        }
-
-        // Уничтожаем старый график если есть
-        if (chartInstances.accuracy) {
-            chartInstances.accuracy.destroy();
-        }
-
-        const ctx = canvas.getContext('2d');
-        chartInstances.accuracy = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: data.epochs || [1, 2, 3, 4, 5],
-                datasets: [
-                    {
-                        label: 'Обучение',
-                        data: data.accuracy || [0.5, 0.6, 0.7, 0.8, 0.9],
-                        borderColor: '#FF6B9D',
-                        backgroundColor: 'rgba(255, 107, 157, 0.2)',
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 4,
-                        pointHoverRadius: 6
-                    },
-                    {
-                        label: 'Валидация',
-                        data: data.val_accuracy || [0.45, 0.55, 0.65, 0.75, 0.85],
-                        borderColor: '#4FC3F7',
-                        backgroundColor: 'rgba(79, 195, 247, 0.2)',
-                        borderWidth: 3,
-                        borderDash: [8, 4],
-                        fill: false,
-                        tension: 0.4,
-                        pointRadius: 4,
-                        pointHoverRadius: 6
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: '📈 Точность модели по эпохам',
-                        font: { size: 16, weight: 'bold' }
-                    },
-                    legend: {
-                        position: 'top',
-                        labels: { usePointStyle: true, padding: 15 }
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        padding: 12,
-                        callbacks: {
-                            label: function(context) {
-                                const value = (context.parsed.y * 100).toFixed(1);
-                                return `${context.dataset.label}: ${value}%`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        title: { display: true, text: 'Эпоха', font: { weight: 'bold' } },
-                        grid: { color: 'rgba(0,0,0,0.05)' }
-                    },
-                    y: {
-                        min: 0,
-                        max: 1,
-                        title: { display: true, text: 'Точность', font: { weight: 'bold' } },
-                        ticks: {
-                            callback: function(value) {
-                                return (value * 100).toFixed(0) + '%';
-                            }
-                        },
-                        grid: { color: 'rgba(0,0,0,0.05)' }
-                    }
-                }
-            }
+    
+    // 🔥 Проверка что Chart доступен
+    if (typeof Chart === 'undefined') {
+        console.error('❌ Chart.js не загружен! Проверь CDN и сеть.');
+        document.querySelectorAll('.chart-container').forEach(c => {
+            c.innerHTML = '<div class="status-badge status-error">❌ Chart.js не загружен</div>';
         });
-        console.log('✅ График 1 создан');
+        return;
     }
+    
+    if (!analyticsData) {
+        console.warn('⚠️ Нет данных для графиков');
+        return;
+    }
+    
+    if (analyticsData.accuracy_vs_epochs) {
+        initAccuracyChart(analyticsData.accuracy_vs_epochs);
+    }
+    
+    if (analyticsData.class_distribution) {
+        initClassDistributionChart(analyticsData.class_distribution);
+    }
+    
+    if (analyticsData.per_record_accuracy) {
+        initPerRecordChart(analyticsData.per_record_accuracy);
+    }
+    
+    if (analyticsData.top5_classes) {
+        initTop5Chart(analyticsData.top5_classes);
+    }
+    
+    console.log('✅ Графики инициализированы');
+}
 
-    // === ГРАФИК 2: РАСПРЕДЕЛЕНИЕ КЛАССОВ ===
-    function createClassDistributionChart(data) {
-        const canvas = document.getElementById('classDistributionChart');
-        if (!canvas) {
-            console.warn('⚠️ Canvas classDistributionChart не найден');
-            return;
-        }
-
-        if (chartInstances.classDist) {
-            chartInstances.classDist.destroy();
-        }
-
-        const colors = ['#FF6B9D', '#FF8E53', '#FFB347', '#C2185B', '#4FC3F7'];
-        const ctx = canvas.getContext('2d');
-
-        chartInstances.classDist = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: data.classes.map(c => `Класс ${c}`),
-                datasets: [{
-                    label: 'Записей',
-                    data: data.counts || [300, 300, 300, 300, 300],
-                    backgroundColor: colors,
+/**
+ * График 1: Зависимость точности от количества эпох
+ */
+function initAccuracyChart(data) {
+    const ctx = document.getElementById('accuracyChart');
+    if (!ctx) {
+        console.warn('⚠️ Canvas accuracyChart не найден');
+        return;
+    }
+    
+    if (charts.accuracy) {
+        charts.accuracy.destroy();
+    }
+    
+    charts.accuracy = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.epochs || [],
+            datasets: [
+                {
+                    label: 'Точность (обучение)',
+                    data: data.accuracy || [],
+                    borderColor: '#FF6B9D',
+                    backgroundColor: 'rgba(255, 107, 157, 0.1)',
                     borderWidth: 2,
-                    borderColor: '#fff',
-                    borderRadius: 8
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: '📊 Распределение классов в данных',
-                        font: { size: 16, weight: 'bold' }
-                    },
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        padding: 12,
-                        callbacks: {
-                            label: ctx => `Записей: ${ctx.parsed.y}`
-                        }
-                    }
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 3,
+                    pointHoverRadius: 5
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: { display: true, text: 'Количество', font: { weight: 'bold' } },
-                        grid: { color: 'rgba(0,0,0,0.05)' }
-                    },
-                    x: {
-                        grid: { display: false }
-                    }
+                {
+                    label: 'Точность (валидация)',
+                    data: data.val_accuracy || [],
+                    borderColor: '#4FC3F7',
+                    backgroundColor: 'rgba(79, 195, 247, 0.1)',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    fill: false,
+                    tension: 0.3,
+                    pointRadius: 3,
+                    pointHoverRadius: 5
                 }
-            }
-        });
-        console.log('✅ График 2 создан');
-    }
-
-    // === ГРАФИК 3: ТОЧНОСТЬ ПО ЗАПИСЯМ ===
-    function createPerRecordChart(accuracies) {
-        const canvas = document.getElementById('perRecordChart');
-        if (!canvas) {
-            console.warn('⚠️ Canvas perRecordChart не найден');
-            return;
-        }
-
-        if (chartInstances.perRecord) {
-            chartInstances.perRecord.destroy();
-        }
-
-        const displayCount = Math.min(50, accuracies.length);
-        const labels = Array.from({length: displayCount}, (_, i) => `#${i+1}`);
-        const values = accuracies.slice(0, displayCount);
-
-        const ctx = canvas.getContext('2d');
-
-        chartInstances.perRecord = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Результат',
-                    data: values,
-                    backgroundColor: values.map(v => v === 1 ? '#81C784' : '#EF9A9A'),
-                    borderWidth: 0,
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: '✅/❌ Точность по каждой записи',
-                        font: { size: 16, weight: 'bold' }
-                    },
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        padding: 12,
-                        callbacks: {
-                            label: ctx => ctx.parsed.y === 1 ? '✅ Верно' : '❌ Ошибка'
-                        }
-                    }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Динамика обучения модели',
+                    font: { size: 14 }
                 },
-                scales: {
-                    y: {
-                        min: 0,
-                        max: 1,
-                        ticks: {
-                            callback: value => value === 1 ? '✓' : '✗'
-                        },
-                        grid: { color: 'rgba(0,0,0,0.05)' }
+                legend: { 
+                    position: 'bottom',
+                    labels: { usePointStyle: true }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + (context.parsed.y * 100).toFixed(2) + '%';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    title: { display: true, text: 'Эпоха' },
+                    grid: { color: 'rgba(0,0,0,0.05)' }
+                },
+                y: {
+                    title: { display: true, text: 'Точность' },
+                    min: 0,
+                    max: 1,
+                    ticks: {
+                        callback: function(value) {
+                            return (value * 100).toFixed(0) + '%';
+                        }
                     },
-                    x: { display: false }
+                    grid: { color: 'rgba(0,0,0,0.05)' }
                 }
             }
-        });
-        console.log('✅ График 3 создан');
+        }
+    });
+    
+    console.log('✅ График точности создан');
+}
+
+/**
+ * График 2: Распределение классов в обучающих данных
+ */
+function initClassDistributionChart(data) {
+    const ctx = document.getElementById('classDistributionChart');
+    if (!ctx) {
+        console.warn('⚠️ Canvas classDistributionChart не найден');
+        return;
     }
-
-    // === ГРАФИК 4: ТОП-5 КЛАССОВ ===
-    function createTop5Chart(data) {
-        const canvas = document.getElementById('top5Chart');
-        if (!canvas) {
-            console.warn('⚠️ Canvas top5Chart не найден');
-            return;
-        }
-
-        if (chartInstances.top5) {
-            chartInstances.top5.destroy();
-        }
-
-        const colors = ['#FF6B9D', '#FF8E53', '#FFB347', '#C2185B', '#4FC3F7'];
-        const total = data.counts.reduce((a, b) => a + b, 0);
-        const ctx = canvas.getContext('2d');
-
-        chartInstances.top5 = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: data.classes.map(c => `Класс ${c}`),
-                datasets: [{
-                    data: data.counts || [100, 100, 100, 100, 100],
-                    backgroundColor: colors,
-                    borderWidth: 3,
-                    borderColor: '#fff'
-                }]
+    
+    if (charts.classDist) {
+        charts.classDist.destroy();
+    }
+    
+    const colors = [
+        '#FF6B9D', '#FF8E53', '#FFB347', '#C2185B', '#4FC3F7',
+        '#29B6F6', '#81C784', '#FFF176', '#BA68C8', '#7986CB'
+    ];
+    
+    charts.classDist = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.classes.map(c => `Класс #${c}`),
+            datasets: [{
+                label: 'Количество записей',
+                data: data.counts || [],
+                backgroundColor: data.counts.map((_, i) => colors[i % colors.length]),
+                borderWidth: 1,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Баланс классов в обучающей выборке',
+                    font: { size: 14 }
+                },
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => `Записей: ${ctx.parsed.y}`
+                    }
+                }
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: '🏆 Топ-5 классов',
-                        font: { size: 16, weight: 'bold' }
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Количество' },
+                    grid: { color: 'rgba(0,0,0,0.05)' }
+                },
+                x: {
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+    
+    console.log('✅ График распределения создан');
+}
+
+/**
+ * График 3: Точность определения каждой записи из теста
+ */
+function initPerRecordChart(accuracies) {
+    const ctx = document.getElementById('perRecordChart');
+    if (!ctx) {
+        console.warn('⚠️ Canvas perRecordChart не найден');
+        return;
+    }
+    
+    if (charts.perRecord) {
+        charts.perRecord.destroy();
+    }
+    
+    const displayCount = Math.min(100, accuracies.length);
+    const labels = accuracies.slice(0, displayCount).map((_, i) => `#${i+1}`);
+    const values = accuracies.slice(0, displayCount);
+    
+    charts.perRecord = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Правильно определено',
+                data: values,
+                backgroundColor: values.map(v => v === 1 ? '#81C784' : '#EF9A9A'),
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: `Точность по записям (показано ${displayCount} из ${accuracies.length})`,
+                    font: { size: 14 }
+                },
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ctx.parsed.y === 1 ? '✅ Верно' : '❌ Ошибка'
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    min: 0,
+                    max: 1,
+                    ticks: {
+                        callback: value => value === 1 ? '✓' : '✗'
                     },
-                    legend: {
-                        position: 'right',
-                        labels: { usePointStyle: true, padding: 15 }
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        padding: 12,
-                        callbacks: {
-                            label: ctx => {
-                                const percent = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
-                                return `${ctx.label}: ${ctx.parsed} (${percent}%)`;
-                            }
+                    grid: { color: 'rgba(0,0,0,0.05)' }
+                },
+                x: {
+                    display: false
+                }
+            }
+        }
+    });
+    
+    console.log('✅ График по записям создан');
+}
+
+/**
+ * График 4: Топ-5 наиболее частых классов в валидации
+ */
+function initTop5Chart(data) {
+    const ctx = document.getElementById('top5Chart');
+    if (!ctx) {
+        console.warn('⚠️ Canvas top5Chart не найден');
+        return;
+    }
+    
+    if (charts.top5) {
+        charts.top5.destroy();
+    }
+    
+    const total = data.counts.reduce((a, b) => a + b, 0);
+    
+    charts.top5 = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.classes.map(c => `Класс #${c}`),
+            datasets: [{
+                data: data.counts || [],
+                backgroundColor: [
+                    '#FF6B9D', '#FF8E53', '#FFB347', '#C2185B', '#4FC3F7'
+                ],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Топ-5 классов в валидационной выборке',
+                    font: { size: 14 }
+                },
+                legend: { 
+                    position: 'right',
+                    labels: { usePointStyle: true }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const value = ctx.parsed;
+                            const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${ctx.label}: ${value} записей (${percent}%)`;
                         }
                     }
                 }
             }
-        });
-        console.log('✅ График 4 создан');
+        }
+    });
+    
+    console.log('✅ График топ-5 создан');
+}
+
+/**
+ * Обновление всех графиков новыми данными
+ */
+/**
+ * Обновление всех графиков новыми данными
+ */
+function updateCharts(newData) {
+    console.log('🔄 Обновление графиков...', newData);
+    
+    if (!newData) return;
+    
+    // График 1: Точность по эпохам
+    if (newData.accuracy_vs_epochs && charts.accuracy) {
+        const d = newData.accuracy_vs_epochs;
+        if (d.epochs?.length > 0) {
+            charts.accuracy.data.labels = d.epochs;
+            charts.accuracy.data.datasets[0].data = d.accuracy || [];
+            charts.accuracy.data.datasets[1].data = d.val_accuracy || [];
+            charts.accuracy.update('none');
+            console.log('✅ График точности обновлён');
+        }
     }
-
-    // === ОБНОВЛЕНИЕ ГРАФИКОВ ===
-    function updateAll(newData) {
-        console.log('🔄 Обновление графиков...', newData);
-        if (!newData) return;
-        initAll(newData);
+    
+    // График 2: Распределение классов
+    if (newData.class_distribution && charts.classDist) {
+        const d = newData.class_distribution;
+        if (d.classes?.length > 0) {
+            charts.classDist.data.labels = d.classes.map(c => `Класс #${c}`);
+            charts.classDist.data.datasets[0].data = d.counts || [];
+            // Обновляем цвета динамически
+            const colors = ['#FF6B9D', '#FF8E53', '#FFB347', '#C2185B', '#4FC3F7', '#29B6F6', '#81C784', '#FFF176', '#BA68C8', '#7986CB'];
+            charts.classDist.data.datasets[0].backgroundColor = d.counts.map((_, i) => colors[i % colors.length]);
+            charts.classDist.update('none');
+            console.log('✅ График распределения обновлён');
+        }
     }
-
-    // === УНИЧТОЖЕНИЕ ГРАФИКОВ ===
-    function destroyAll() {
-        Object.values(chartInstances).forEach(chart => {
-            if (chart) chart.destroy();
-        });
-        Object.keys(chartInstances).forEach(key => delete chartInstances[key]);
-        console.log('🗑️ Графики уничтожены');
+    
+    // График 3: Точность по записям — ✅ ПРАВИЛЬНОЕ ОБНОВЛЕНИЕ
+    if (newData.per_record_accuracy && Array.isArray(newData.per_record_accuracy)) {
+        if (charts.perRecord) {
+            const displayCount = Math.min(100, newData.per_record_accuracy.length);
+            charts.perRecord.data.labels = newData.per_record_accuracy.slice(0, displayCount).map((_, i) => `#${i+1}`);
+            const values = newData.per_record_accuracy.slice(0, displayCount);
+            charts.perRecord.data.datasets[0].data = values;
+            charts.perRecord.data.datasets[0].backgroundColor = values.map(v => v === 1 ? '#81C784' : '#EF9A9A');
+            // Обновляем заголовок
+            charts.perRecord.options.plugins.title.text = `Точность по записям (показано ${displayCount} из ${newData.per_record_accuracy.length})`;
+            charts.perRecord.update('none');
+        } else if (newData.per_record_accuracy.length > 0) {
+            // Если график ещё не создан, но есть данные — создаём
+            initPerRecordChart(newData.per_record_accuracy);
+        }
+        console.log('✅ График по записям обновлён');
     }
-
-    // === ПОКАЗАТЬ ОШИБКУ ===
-    function showChartError(message) {
-        document.querySelectorAll('.chart-container').forEach(container => {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 40px; color: #C62828;">
-                    <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 10px;"></i>
-                    <p>${message}</p>
-                </div>
-            `;
-        });
+    
+    // График 4: Топ-5 классов
+    if (newData.top5_classes && charts.top5) {
+        const d = newData.top5_classes;
+        if (d.classes?.length > 0) {
+            charts.top5.data.labels = d.classes.map(c => `Класс #${c}`);
+            charts.top5.data.datasets[0].data = d.counts || [];
+            charts.top5.update('none');
+            console.log('✅ График топ-5 обновлён');
+        }
     }
+}
+/**
+ * Уничтожение всех графиков
+ */
+function destroyCharts() {
+    Object.values(charts).forEach(chart => {
+        if (chart) chart.destroy();
+    });
+    Object.keys(charts).forEach(key => delete charts[key]);
+    console.log('🗑️ Графики уничтожены');
+}
 
-    // === ПУБЛИЧНЫЙ API ===
-    return {
-        init: initAll,
-        update: updateAll,
-        destroy: destroyAll,
-        DEMO_DATA: DEMO_DATA
-    };
-})();
+/**
+ * Проверка что Chart.js загружен
+ */
+function checkChartJS() {
+    if (typeof Chart === 'undefined') {
+        console.error('❌ Chart.js не загружен! Проверьте подключение CDN');
+        return false;
+    }
+    console.log('✅ Chart.js загружен');
+    return true;
+}
 
-// ✅ Экспорт в window
-window.Charts = ChartsModule;
+// Экспорт для использования в других модулях
+window.Charts = {
+    init: initCharts,
+    update: updateCharts,
+    destroy: destroyCharts,
+    checkChartJS: checkChartJS
+};
 
-// ✅ Автоинициализация при загрузке страницы
+// Автопроверка при загрузке
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🦐 Charts module loaded');
-    // Проверяем есть ли canvas на странице
-    if (document.getElementById('accuracyChart')) {
-        console.log('📊 Canvas найден, инициализируем с демо-данными');
-        window.Charts.init(window.Charts.DEMO_DATA);
-    }
+    checkChartJS();
 });

@@ -1,6 +1,3 @@
-// frontend/js/login.js
-// Модуль страницы входа: обработка формы, кнопка показать/скрыть пароль
-
 document.addEventListener('DOMContentLoaded', function() {
     const loginForm = document.getElementById('loginForm');
     const loginBtn = document.getElementById('loginBtn');
@@ -11,10 +8,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const passwordToggle = document.getElementById('passwordToggle');
     const toggleIcon = passwordToggle?.querySelector('i');
 
-    // Проверка авторизации при загрузке страницы
     checkExistingAuth();
 
-    // Обработчик отправки формы
     loginForm?.addEventListener('submit', async function(e) {
         e.preventDefault();
         
@@ -28,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await window.Auth.login(username, password);
             
             if (result.success) {
-                console.log('✅ Вход успешен:', result.user);
+                console.log('Вход успешен:', result.user);
                 if (result.user.role === 'admin') {
                     window.location.href = '/admin';
                 } else {
@@ -45,22 +40,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // ✅ Обработчик кнопки показать/скрыть пароль
     passwordToggle?.addEventListener('click', function() {
         const isPassword = passwordInput.type === 'password';
         passwordInput.type = isPassword ? 'text' : 'password';
         toggleIcon.className = isPassword ? 'fas fa-eye-slash' : 'fas fa-eye';
     });
 
-    // Очистка ошибки при вводе
     usernameInput?.addEventListener('input', hideError);
     passwordInput?.addEventListener('input', hideError);
 
-    // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
     async function checkExistingAuth() {
         const isAuthenticated = await window.Auth.checkAuth();
         if (isAuthenticated && window.currentUser) {
-            console.log('✅ Сессия восстановлена');
+            console.log('Сессия восстановлена');
             if (window.currentUser.role === 'admin') {
                 window.location.href = '/admin';
             } else {

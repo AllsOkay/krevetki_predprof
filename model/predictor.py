@@ -1,6 +1,3 @@
-# backend/model/predictor.py
-# Модуль для инференса (предсказаний) и оценки модели
-
 import numpy as np
 from typing import Dict, List, Optional, Union
 import logging
@@ -9,9 +6,6 @@ logger = logging.getLogger(__name__)
 
 
 class ModelPredictor:
-    """
-    Предиктор для классификации сигналов и расчёта метрик.
-    """
 
     def __init__(self, model):
         self.model = model
@@ -40,30 +34,24 @@ class ModelPredictor:
         
         n_classes = self.model.num_classes
         
-        # ✅ ИСПРАВЛЕНИЕ: Нормализация меток классов
         if y.ndim == 1:
             unique_labels = np.unique(y)
             
-            # Если метки выходят за диапазон модели - маппим их
             if np.any(y >= n_classes) or np.any(y < 0):
                 logger.warning(f"Метки классов {unique_labels} вне диапазона модели [0, {n_classes-1}]")
-                # Создаём маппинг: старые метки -> новые (по модулю n_classes)
                 y_mapped = y % n_classes
                 accuracy = np.mean(predictions == y_mapped)
                 
-                # Потери считаем по маппированным меткам
                 epsilon = 1e-15
                 clipped_probs = np.clip(probabilities, epsilon, 1 - epsilon)
                 loss = -np.mean(np.log(clipped_probs[np.arange(len(y)), y_mapped] + epsilon))
                 
-                # Per-class точность по маппированным меткам
                 per_class = {}
                 for cls in np.unique(y_mapped):
                     mask = y_mapped == cls
                     if np.sum(mask) > 0:
                         per_class[int(cls)] = float(np.mean(predictions[mask] == cls))
             else:
-                # Стандартный расчёт
                 accuracy = np.mean(predictions == y)
                 
                 epsilon = 1e-15

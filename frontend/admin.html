@@ -3,34 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🦐 Alien Classifier | Админ-панель</title>
+    <title>Админ-панель</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <nav class="navbar">
         <a href="/admin" class="nav-brand">
-            Alien Classifier <span style="font-size: 0.8em;">👑 Admin</span>
+            Alien Classifier <span style="font-size: 0.8em;">Admin</span>
         </a>
         <div class="nav-links">
-            <a href="/dashboard" class="nav-link">📊 Пользовательская панель</a>
-            <span id="adminName" class="nav-link">👤 Загрузка...</span>
-            <a href="#" id="logoutBtn" class="nav-link">🚪 Выход</a>
+            <a href="/dashboard" class="nav-link">Пользовательская панель</a>
+            <span id="adminName" class="nav-link">Загрузка...</span>
+            <a href="#" id="logoutBtn" class="nav-link">Выход</a>
         </div>
     </nav>
 
     <main class="container">
         <div class="card animate-fade-in">
-            <h2>👑 Панель администратора</h2>
+            <h2>🦐 Панель администратора</h2>
             <p style="color: var(--text-secondary);">
                 Управление пользователями системы классификации сигналов
             </p>
         </div>
 
         <div class="card animate-fade-in" style="animation-delay: 0.1s;">
-            <h3>➕ Создать нового пользователя</h3>
+            <h3>Создать нового пользователя</h3>
             <p style="margin-bottom: 16px; color: var(--text-secondary);">
-                Обязательные поля: Имя и Фамилия (согласно техническому заданию)
+                Обязательные поля: Имя и Фамилия
             </p>
             <form id="createUserForm">
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
@@ -95,14 +95,14 @@
         </div>
 
         <div class="card animate-fade-in" style="animation-delay: 0.2s;">
-            <h3>👥 Зарегистрированные пользователи</h3>
+            <h3>Зарегистрированные пользователи</h3>
             <div id="usersList" style="margin-top: 16px;">
-                <div class="status-badge status-warning">⏳ Загрузка списка...</div>
+                <div class="status-badge status-warning">Загрузка списка...</div>
             </div>
         </div>
 
         <div class="card animate-fade-in" style="animation-delay: 0.3s;">
-            <h3>⚙️ Системная информация</h3>
+            <h3>Системная информация</h3>
             <div class="info-grid">
                 <div class="info-grid-item">
                     <strong>Статус сервера:</strong> 

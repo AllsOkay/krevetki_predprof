@@ -1,9 +1,3 @@
-// frontend/js/upload.js
-// Модуль загрузки файлов и обработки результатов классификации
-
-/**
- * Обработчик отправки формы загрузки тестовых данных
- */
 async function handleFileUpload(event) {
     event.preventDefault();
     
@@ -25,7 +19,7 @@ async function handleFileUpload(event) {
     }
     
     statusDiv.classList.remove('hidden');
-    statusDiv.innerHTML = '<div class="status-badge status-warning">⏳ Загрузка и обработка...</div>';
+    statusDiv.innerHTML = '<div class="status-badge status-warning">Загрузка и обработка...</div>';
     resultsDiv.classList.add('hidden');
     
     const formData = new FormData();
@@ -46,36 +40,28 @@ async function handleFileUpload(event) {
             displayPredictionResults(result);
             statusDiv.classList.add('hidden');
             resultsDiv.classList.remove('hidden');
-            
-            // ✅ Обновляем графики с новыми данными включая тестовые метрики
             if (result.analytics) {
                 window.Charts?.update(result.analytics);
             }
             
-            // ✅ Прокрутка к результатам
             resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
         } else {
-            statusDiv.innerHTML = `<div class="status-badge status-error">❌ Ошибка: ${result.error}</div>`;
+            statusDiv.innerHTML = `<div class="status-badge status-error">Ошибка: ${result.error}</div>`;
         }
     } catch (error) {
         console.error('Upload error:', error);
-        statusDiv.innerHTML = `<div class="status-badge status-error">❌ Ошибка сети: ${error.message}</div>`;
+        statusDiv.innerHTML = `<div class="status-badge status-error">Ошибка сети: ${error.message}</div>`;
     } finally {
         form.reset();
     }
 }
 
-/**
- * Отображение результатов классификации в интерфейсе
- * ✅ Добавлено отображение всех тестовых метрик
- */
 function displayPredictionResults(result) {
     const accuracyEl = document.getElementById('resultAccuracy');
     const lossEl = document.getElementById('resultLoss');
     const countEl = document.getElementById('resultCount');
     const correctEl = document.getElementById('resultCorrect');
     
-    // ✅ Точность в процентах с цветовой индикацией
     if (accuracyEl) {
         const accuracy = result.accuracy || 0;
         const accuracyPercent = (accuracy * 100).toFixed(2);
@@ -83,30 +69,25 @@ function displayPredictionResults(result) {
         accuracyEl.className = 'metric-value ' + (accuracy >= 0.8 ? 'high' : 'low');
     }
     
-    // ✅ Потери с 4 знаками после запятой
     if (lossEl) {
         const loss = result.loss || 0;
         lossEl.textContent = loss.toFixed(4);
         lossEl.className = 'metric-value ' + (loss < 0.5 ? 'high' : 'low');
     }
     
-    // ✅ Количество обработанных записей
     if (countEl) {
         countEl.textContent = result.n_samples || result.predictions?.length || 'N/A';
     }
     
-    // ✅ Количество верно определённых записей
     if (correctEl && result.n_samples && result.accuracy) {
         const correct = Math.round(result.n_samples * result.accuracy);
         correctEl.textContent = `${correct} из ${result.n_samples}`;
     }
     
-    // ✅ Логирование для отладки
     if (result.per_class_accuracy) {
         console.log('Per-class accuracy:', result.per_class_accuracy);
     }
     
-    // ✅ Обновление графика точности с тестовыми данными
     if (result.accuracy && window.Charts) {
         const analytics = {
             accuracy_vs_epochs: {
@@ -120,9 +101,6 @@ function displayPredictionResults(result) {
     }
 }
 
-/**
- * Обновление прогресс-бара загрузки
- */
 function updateUploadProgress(loaded, total) {
     const percent = Math.round((loaded / total) * 100);
     const statusDiv = document.getElementById('uploadStatus');
@@ -139,7 +117,6 @@ function updateUploadProgress(loaded, total) {
     }
 }
 
-// Инициализация обработчиков
 document.addEventListener('DOMContentLoaded', function() {
     const uploadForm = document.getElementById('uploadForm');
     if (uploadForm) {

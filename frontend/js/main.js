@@ -1,11 +1,5 @@
-// frontend/js/main.js
-// Главный модуль: инициализация приложения, обработка навигации, общие утилиты
-
-/**
- * Инициализация приложения при загрузке страницы
- */
 async function initApp() {
-    console.log('🦐 Alien Classifier initializing...');
+    console.log('Alien Classifier initializing...');
     
     const isAuthenticated = await window.Auth?.checkAuth();
     updateUI(isAuthenticated);
@@ -25,12 +19,8 @@ async function initApp() {
     }
     
     setupGlobalHandlers();
-    console.log('✓ Application initialized');
+    console.log('Application initialized');
 }
-
-/**
- * Обновление UI в зависимости от статуса авторизации
- */
 function updateUI(isAuthenticated) {
     const userInfo = document.getElementById('userInfo');
     const userName = document.getElementById('userName');
@@ -61,7 +51,7 @@ function updateUI(isAuthenticated) {
         }
     } else {
         if (userInfo) {
-            userInfo.textContent = '🔐 Войти';
+            userInfo.textContent = 'Войти';
             userInfo.classList.remove('active');
             userInfo.onclick = () => window.location.href = '/';
         }
@@ -75,9 +65,6 @@ function updateUI(isAuthenticated) {
     }
 }
 
-/**
- * Загрузка и отображение данных пользователя
- */
 async function loadUserData() {
     try {
         const response = await fetch('/api/model/info', {
@@ -93,24 +80,18 @@ async function loadUserData() {
     }
 }
 
-/**
- * Обновление блока информации о модели
- */
 function updateModelInfo(info) {
     const statusEl = document.getElementById('modelStatus');
     const classesEl = document.getElementById('modelClasses');
     const paramsEl = document.getElementById('modelParams');
     const trainedEl = document.getElementById('modelTrained');
     
-    if (statusEl) statusEl.textContent = info.is_trained ? '✅ Обучена' : '⏳ Не обучена';
+    if (statusEl) statusEl.textContent = info.is_trained ? 'Обучена' : 'Не обучена';
     if (classesEl) classesEl.textContent = info.num_classes || '-';
     if (paramsEl) paramsEl.textContent = info.total_params?.toLocaleString('ru-RU') || '-';
     if (trainedEl) trainedEl.textContent = info.is_trained ? 'Да' : 'Нет';
 }
 
-/**
- * Загрузка аналитики для графиков
- */
 async function loadAnalytics() {
     try {
         const response = await fetch('/api/analytics', {
@@ -136,9 +117,6 @@ async function loadAnalytics() {
     }
 }
 
-/**
- * Настройка глобальных обработчиков событий
- */
 function setupGlobalHandlers() {
     document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
         e.preventDefault();
@@ -147,22 +125,15 @@ function setupGlobalHandlers() {
     
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            // Закрытие модальных окон если будут добавлены
         }
     });
 }
 
-/**
- * Форматирование чисел для отображения
- */
 function formatNumber(num, decimals = 2) {
     if (num === null || num === undefined) return '-';
     return Number(num).toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }
 
-/**
- * Показ/скрытие элементов с анимацией
- */
 function toggleElement(element, show) {
     if (!element) return;
     
@@ -175,7 +146,6 @@ function toggleElement(element, show) {
     }
 }
 
-// Инициализация при загрузке
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initApp);
 } else {

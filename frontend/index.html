@@ -1,11 +1,9 @@
-<!-- frontend/index.html -->
-<!-- Страница авторизации для Alien Signal Classifier -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🦐 Alien Signal Classifier | Вход</title>
+    <title>Вход</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -27,17 +25,15 @@
         <div class="login-container">
             <div class="login-card animate-fade-in">
                 <div class="login-header">
-                    <h1>🛸 Вход в систему</h1>
+                    <h1>Вход в систему</h1>
                     <p>Классификация инопланетных радиосигналов</p>
                 </div>
 
-                <!-- ✅ ИСПРАВЛЕНИЕ: autocomplete="off" для формы -->
                 <form id="loginForm" autocomplete="off">
                     <div class="form-group">
                         <label for="username">
                             <i class="fas fa-user"></i> Логин
                         </label>
-                        <!-- ✅ autocomplete="off" для логина -->
                         <input
                             type="text"
                             id="username"
@@ -53,7 +49,6 @@
                         <label for="password">
                             <i class="fas fa-lock"></i> Пароль
                         </label>
-                        <!-- ✅ autocomplete="new-password" предотвращает автозаполнение -->
                         <input
                             type="password"
                             id="password"
@@ -80,40 +75,17 @@
                 <div class="demo-credentials">
                     <h4><i class="fas fa-info-circle"></i> Демо-доступ для тестирования:</h4>
                     <div class="credential-item">
-                        <strong>👑 Администратор:</strong><br>
+                        <strong>Администратор:</strong><br>
                         Логин: <code>admin</code> | Пароль: <code>admin123</code>
                     </div>
                     <div class="credential-item">
-                        <strong>👤 Пользователь:</strong><br>
+                        <strong>Пользователь:</strong><br>
                         Логин: <code>user</code> | Пароль: <code>user123</code>
                     </div>
                 </div>
             </div>
-
-            <div class="info-card animate-fade-in-delayed">
-                <h2>📡 О проекте</h2>
-                <p>
-                    Эта система использует искусственный интеллект для классификации
-                    радиосигналов от различных инопланетных цивилизаций.
-                    Нейронная сеть обучена на 1600 записях сигналов и способна
-                    определять отправителя с высокой точностью.
-                </p>
-                <ul>
-                    <li>🧠 Кастомная нейросеть, реализованная с нуля</li>
-                    <li>🔐 Двухуровневая система авторизации</li>
-                    <li>📊 Интерактивная аналитика и визуализация</li>
-                    <li>☁️ Поддержка Yandex DataSphere</li>
-                </ul>
-            </div>
         </div>
     </main>
-
-    <footer class="footer">
-        <p>🦐 Alien Signal Classifier v1.0 | МПОШ 2226</p>
-        <p style="margin-top: 5px; font-size: 0.85rem;">
-            Продуктовый сектор • Раздел "ИТ" • Практика заключительного этапа
-        </p>
-    </footer>
 
     <script src="/js/auth.js"></script>
     <script src="/js/main.js"></script>

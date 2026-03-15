@@ -1,6 +1,3 @@
-# backend/model/neural_net.py
-# Реализация нейронной сети для классификации инопланетных сигналов
-
 import numpy as np
 from typing import Tuple, List, Optional
 import pickle
@@ -10,10 +7,6 @@ __all__ = ['AlienSignalNet']
 
 
 class AlienSignalNet:
-    """
-    Кастомная нейронная сеть для классификации радиосигналов.
-    """
-
     def __init__(self, input_shape: Tuple[int], num_classes: int, 
                  hidden_layers: List[int] = [128, 64], 
                  learning_rate: float = 0.001):
@@ -60,9 +53,6 @@ class AlienSignalNet:
         return -np.mean(np.sum(y_true * np.log(y_pred_clipped), axis=1))
 
     def _resize_input(self, X_flat: np.ndarray, target_size: int) -> np.ndarray:
-        """
-        ✅ Подгоняет размер входа к ожидаемому модели через интерполяцию
-        """
         current_size = X_flat.shape[1]
         
         if current_size == target_size:
@@ -86,7 +76,6 @@ class AlienSignalNet:
         expected_input_size = np.prod(self.input_shape)
         actual_input_size = X_flat.shape[1]
         
-        # ✅ АВТОМАТИЧЕСКАЯ ПОДГОНКА РАЗМЕРА
         if actual_input_size != expected_input_size:
             X_flat = self._resize_input(X_flat, expected_input_size)
         

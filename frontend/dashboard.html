@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🦐 Alien Classifier | Панель пользователя</title>
+    <title>Панель пользователя</title>
     <link rel="stylesheet" href="/css/style.css">
     <!-- Chart.js для графиков -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -15,23 +15,21 @@
     <nav class="navbar">
         <a href="/dashboard" class="nav-brand">Alien Classifier</a>
         <div class="nav-links">
-            <span id="userInfo" class="nav-link">👤 Загрузка...</span>
-            <a href="#" id="logoutBtn" class="nav-link hidden">🚪 Выход</a>
+            <span id="userInfo" class="nav-link">Загрузка...</span>
+            <a href="#" id="logoutBtn" class="nav-link hidden">Выход</a>
         </div>
     </nav>
 
     <main class="container">
-        <!-- Приветствие пользователя -->
         <div class="card animate-fade-in">
-            <h2>👋 Добро пожаловать, <span id="userName">Пользователь</span>!</h2>
+            <h2>Добро пожаловать, <span id="userName">Пользователь</span>!</h2>
             <p style="color: var(--text-secondary);">
                 Используйте панель ниже для анализа инопланетных сигналов
             </p>
         </div>
 
-        <!-- Секция загрузки тестовых данных -->
         <div class="card animate-fade-in" style="animation-delay: 0.1s;">
-            <h3>📤 Загрузка тестового набора данных</h3>
+            <h3>Загрузка тестового набора данных</h3>
             <p style="margin-bottom: 16px; color: var(--text-secondary);">
                 Загрузите файл .npz с тестовыми сигналами для классификации
             </p>
@@ -50,11 +48,11 @@
             </form>
 
             <div id="uploadStatus" class="hidden" style="margin-top: 16px;">
-                <div class="status-badge status-warning">⏳ Обработка...</div>
+                <div class="status-badge status-warning">Обработка...</div>
             </div>
 
             <div id="predictionResults" class="hidden" style="margin-top: 20px; padding: 16px; background: var(--bg-secondary); border-radius: var(--border-radius);">
-                <h4>📊 Результаты классификации</h4>
+                <h4>Результаты классификации</h4>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 16px 0;">
                     <div>
                         <strong>Точность:</strong>
@@ -72,9 +70,8 @@
             </div>
         </div>
 
-        <!-- Секция аналитики: 4 требуемых графика -->
         <div class="card animate-fade-in" style="animation-delay: 0.2s;">
-            <h3>📈 Аналитика модели</h3>
+            <h3>Аналитика модели</h3>
             
             <h4 style="margin: 20px 0 12px;">1. Точность на валидации по эпохам</h4>
             <div class="chart-container">
@@ -97,9 +94,8 @@
             </div>
         </div>
 
-        <!-- Информация о модели -->
         <div class="card animate-fade-in" style="animation-delay: 0.3s;">
-            <h3>🤖 Информация о модели</h3>
+            <h3>Информация о модели</h3>
             <div id="modelInfo" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
                 <div><strong>Статус:</strong> <span id="modelStatus">Загрузка...</span></div>
                 <div><strong>Классов:</strong> <span id="modelClasses">-</span></div>
@@ -109,7 +105,6 @@
         </div>
     </main>
 
-    <!-- Скрипты -->
     <script src="/js/auth.js"></script>
     <script src="/js/charts.js"></script>
     <script src="/js/upload.js"></script>

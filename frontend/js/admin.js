@@ -1,51 +1,35 @@
-/**
- * admin.js — Логика админ-панели Alien Classifier
- * ✅ Исправлено: правильный ключ localStorage и совместимость с auth.js
- */
-
-// === ГЛОБАЛЬНЫЕ КОНСТАНТЫ — СОВМЕСТИМО С auth.js ===
 const API_BASE = '/api';
 const TOKEN_KEY = 'auth_token';
-const USER_DATA_KEY = 'user_data';  // ✅ Правильный ключ, как в auth.js!
+const USER_DATA_KEY = 'user_data';
 
-// Флаги предотвращения конфликтов
 let redirectInProgress = false;
 let adminPanelInitialized = false;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // ✅ Ждём немного, чтобы auth.js успел инициализироваться
     setTimeout(initAdminPanel, 50);
 });
 
-// === ОСНОВНАЯ ИНИЦИАЛИЗАЦИЯ ===
 async function initAdminPanel() {
-    // 🔒 Защита от повторного запуска
     if (adminPanelInitialized) return;
     adminPanelInitialized = true;
     
     if (redirectInProgress) return;
     
     try {
-        // 1. Проверка авторизации — ЧИТАЕМ ИЗ ПРАВИЛЬНОГО КЛЮЧА
         const auth = getStoredAuth();
-        
-        // 2. Если нет токена или данных — редирект
         if (!auth.token || !auth.userInfo) {
             safeRedirect('/');
             return;
         }
         
-        // 3. Если пользователь не админ — редирект в дашборд
         if (auth.userInfo.role !== 'admin') {
             safeRedirect('/dashboard');
             return;
         }
         
-        // ✅ Всё ок — загружаем панель
         displayAdminName(auth.userInfo);
         setupEventListeners();
-        
-        // Загружаем данные асинхронно
+
         loadUsersList().catch(console.error);
         loadSystemInfo().catch(console.error);
         
@@ -55,16 +39,12 @@ async function initAdminPanel() {
     }
 }
 
-// === ПОЛУЧЕНИЕ ДАННЫХ АВТОРИЗАЦИИ — СОВМЕСТИМО С auth.js ===
 function getStoredAuth() {
     try {
         const token = localStorage.getItem(TOKEN_KEY);
-        
-        // ✅ Читаем из 'user_data', как сохраняет auth.js
         const userDataRaw = localStorage.getItem(USER_DATA_KEY);
         const userInfo = userDataRaw ? JSON.parse(userDataRaw) : null;
         
-        // Также проверяем window.currentUser (если auth.js уже загрузил)
         if (!userInfo && window.currentUser) {
             return {
                 token: window.currentUser.token || token,
@@ -84,23 +64,20 @@ function getStoredAuth() {
     }
 }
 
-// === БЕЗОПАСНЫЙ РЕДИРЕКТ ===
 function safeRedirect(url) {
     if (redirectInProgress) return;
     redirectInProgress = true;
     
     setTimeout(() => {
-        // Очищаем данные только если нет прав
         const auth = getStoredAuth();
         if (!auth.token || !auth.userInfo || auth.userInfo.role !== 'admin') {
             localStorage.removeItem(TOKEN_KEY);
             localStorage.removeItem(USER_DATA_KEY);
         }
         window.location.href = url;
-    }, 150); // Чуть больше задержка для стабильности
+    }, 150);
 }
 
-// === ОТОБРАЖЕНИЕ ===
 function displayAdminName(userInfo) {
     const adminNameEl = document.getElementById('adminName');
     if (adminNameEl && userInfo) {
@@ -134,7 +111,6 @@ function displayMessage(elementId, message, type = 'info') {
     }
 }
 
-// === ОБРАБОТЧИКИ СОБЫТИЙ ===
 function setupEventListeners() {
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
@@ -150,11 +126,8 @@ function setupEventListeners() {
     }
 }
 
-// === ВЫХОД ===
 function handleLogout() {
     redirectInProgress = true;
-    
-    // ✅ Используем logout() из auth.js если доступен
     if (typeof window.Auth?.logout === 'function') {
         window.Auth.logout();
     } else {
@@ -165,7 +138,6 @@ function handleLogout() {
     }
 }
 
-// === ЗАГОЛОВКИ АВТОРИЗАЦИИ — С BEARER ===
 function getAuthHeaders() {
     const token = localStorage.getItem(TOKEN_KEY) || window.currentUser?.token;
     
@@ -173,7 +145,6 @@ function getAuthHeaders() {
         return { 'Content-Type': 'application/json' };
     }
     
-    // ✅ Убираем дублирование префикса
     const cleanToken = token.startsWith('Bearer ') ? token.slice(7).trim() : token.trim();
     
     return {
@@ -182,7 +153,6 @@ function getAuthHeaders() {
     };
 }
 
-// === СОЗДАНИЕ ПОЛЬЗОВАТЕЛЯ ===
 async function handleCreateUser(e) {
     e.preventDefault();
     
@@ -197,12 +167,12 @@ async function handleCreateUser(e) {
     };
     
     if (!formData.username || !formData.password || !formData.name || !formData.surname) {
-        displayMessage('createUserMessage', '❌ Заполните все обязательные поля', 'error');
+        displayMessage('createUserMessage', 'Заполните все обязательные поля', 'error');
         return;
     }
     
     if (formData.password.length < 8) {
-        displayMessage('createUserMessage', '❌ Пароль минимум 8 символов', 'error');
+        displayMessage('createUserMessage', 'Пароль минимум 8 символов', 'error');
         return;
     }
     
@@ -221,27 +191,26 @@ async function handleCreateUser(e) {
         const result = await response.json();
         
         if (response.ok) {
-            displayMessage('createUserMessage', `✅ ${result.message}`, 'success');
+            displayMessage('createUserMessage', `${result.message}`, 'success');
             form.reset();
             await loadUsersList();
         } else {
-            displayMessage('createUserMessage', `❌ ${result.error || 'Ошибка'}`, 'error');
+            displayMessage('createUserMessage', `${result.error || 'Ошибка'}`, 'error');
         }
     } catch (error) {
         console.error('Create user error:', error);
-        displayMessage('createUserMessage', '❌ Ошибка соединения', 'error');
+        displayMessage('createUserMessage', 'Ошибка соединения', 'error');
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalBtnText;
     }
 }
 
-// === СПИСОК ПОЛЬЗОВАТЕЛЕЙ ===
 async function loadUsersList() {
     const usersListEl = document.getElementById('usersList');
     if (!usersListEl) return;
     
-    usersListEl.innerHTML = '<div class="status-badge status-warning">⏳ Загрузка...</div>';
+    usersListEl.innerHTML = '<div class="status-badge status-warning">Загрузка...</div>';
     
     try {
         const response = await fetch(`${API_BASE}/users`, {
@@ -250,7 +219,7 @@ async function loadUsersList() {
         });
         
         if (response.status === 401 || response.status === 403) {
-            usersListEl.innerHTML = '<div class="status-badge status-error">🔒 Доступ запрещён</div>';
+            usersListEl.innerHTML = '<div class="status-badge status-error">Доступ запрещён</div>';
             return;
         }
         
@@ -259,7 +228,7 @@ async function loadUsersList() {
         const users = await response.json();
         
         if (users.length === 0) {
-            usersListEl.innerHTML = '<div class="status-badge">📭 Нет пользователей</div>';
+            usersListEl.innerHTML = '<div class="status-badge">Нет пользователей</div>';
             return;
         }
         
@@ -295,11 +264,10 @@ async function loadUsersList() {
         
     } catch (error) {
         console.error('Load users error:', error);
-        usersListEl.innerHTML = '<div class="status-badge status-error">❌ Ошибка загрузки</div>';
+        usersListEl.innerHTML = '<div class="status-badge status-error">Ошибка загрузки</div>';
     }
 }
 
-// === СИСТЕМНАЯ ИНФОРМАЦИЯ ===
 async function loadSystemInfo() {
     await Promise.allSettled([
         checkServerHealth(),
@@ -317,16 +285,16 @@ async function checkServerHealth() {
         const data = await response.json();
         
         if (statusEl) {
-            statusEl.textContent = data.status === 'ok' ? '🟢 Онлайн' : '🔴 Оффлайн';
+            statusEl.textContent = data.status === 'ok' ? 'Онлайн' : 'Оффлайн';
             statusEl.style.color = data.status === 'ok' ? 'var(--success)' : 'var(--error)';
         }
         if (dbEl) {
-            dbEl.textContent = data.database === 'connected' ? '🟢 Подключена' : '🔴 Ошибка';
+            dbEl.textContent = data.database === 'connected' ? 'Подключена' : 'Ошибка';
             dbEl.style.color = data.database === 'connected' ? 'var(--success)' : 'var(--error)';
         }
     } catch {
-        if (statusEl) { statusEl.textContent = '🔴 Недоступен'; statusEl.style.color = 'var(--error)'; }
-        if (dbEl) { dbEl.textContent = '❌ Ошибка'; dbEl.style.color = 'var(--error)'; }
+        if (statusEl) { statusEl.textContent = 'Недоступен'; statusEl.style.color = 'var(--error)'; }
+        if (dbEl) { dbEl.textContent = 'Ошибка'; dbEl.style.color = 'var(--error)'; }
     }
 }
 
@@ -337,20 +305,20 @@ async function loadModelInfo() {
         const response = await fetch(`${API_BASE}/model/info`, { headers: getAuthHeaders() });
         
         if (response.status === 401) {
-            if (modelEl) modelEl.textContent = '🔒 Требуется вход';
+            if (modelEl) modelEl.textContent = 'Требуется вход';
             return;
         }
         if (!response.ok) {
-            if (modelEl) modelEl.textContent = '⚠️ Не загружена';
+            if (modelEl) modelEl.textContent = 'Не загружена';
             return;
         }
         
         const data = await response.json();
         if (modelEl) {
-            modelEl.innerHTML = `🟢 Загружена <small style="display:block;color:var(--text-secondary);margin-top:4px">${data.num_classes} классов • ${data.total_params?.toLocaleString() || '?'} параметров</small>`;
+            modelEl.innerHTML = `Загружена <small style="display:block;color:var(--text-secondary);margin-top:4px">${data.num_classes} классов • ${data.total_params?.toLocaleString() || '?'} параметров</small>`;
         }
     } catch {
-        if (modelEl) modelEl.textContent = '❌ Ошибка';
+        if (modelEl) modelEl.textContent = 'Ошибка';
     }
 }
 
@@ -359,7 +327,6 @@ async function updateActiveSessions() {
     if (el) el.textContent = '1';
 }
 
-// === ВСПОМОГАТЕЛЬНЫЕ ===
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');

@@ -1,6 +1,3 @@
-# backend/database.py
-# Модуль для работы с базой данных пользователей с использованием SQLAlchemy
-
 from datetime import datetime
 from typing import Optional, List, Dict
 import hashlib
@@ -12,17 +9,13 @@ from sqlalchemy.exc import IntegrityError
 
 DB_PATH = "database.db"
 
-# Создаём движок SQLAlchemy
 engine = create_engine(
     f"sqlite:///{DB_PATH}",
     echo=False,
     connect_args={"check_same_thread": False}
 )
-
-# Базовый класс для моделей
 Base = declarative_base()
 
-# Фабрика сессий
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 class User(Base):
@@ -43,7 +36,6 @@ class User(Base):
 
 
 def get_db():
-    """Вспомогательная функция для получения сессии."""
     db = SessionLocal()
     try:
         yield db
@@ -51,15 +43,11 @@ def get_db():
         db.close()
 
 def create_demo_users():
-    """Создаёт демо-пользователей если их нет в базе."""
     db = SessionLocal()
     try:
-        # Проверяем есть ли уже пользователи
         existing = db.query(User).filter_by(username='admin').first()
         if existing:
-            return  # Демо-пользователи уже созданы
-        
-        # Создаём администратора
+            return
         admin = User(
             username='admin',
             password_hash=hash_password('admin123'),
@@ -69,7 +57,6 @@ def create_demo_users():
         )
         db.add(admin)
         
-        # Создаём обычного пользователя
         user = User(
             username='user',
             password_hash=hash_password('user123'),
@@ -80,7 +67,7 @@ def create_demo_users():
         db.add(user)
         
         db.commit()
-        print("✅ Демо-пользователи созданы: admin/admin123, user/user123")
+        print("Демо-пользователи созданы: admin/admin123, user/user123")
         
     except IntegrityError:
         db.rollback()
@@ -181,6 +168,5 @@ def delete_user(username: str) -> bool:
         db.close()
 
 
-# === ИНИЦИАЛИЗАЦИЯ БАЗЫ ===
 Base.metadata.create_all(bind=engine)
-create_demo_users()  # ✅ Создаём демо-пользователей при старте
+create_demo_users()

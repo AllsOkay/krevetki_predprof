@@ -7,7 +7,7 @@ import hashlib
 db_url = "sqlite:///database.db"
 engine = sql.create_engine(db_url)
 Base = orm.declarative_base()
-
+Meta = Base.metadata
 Session = orm.sessionmaker(engine)
 
 class User(Base):
@@ -19,7 +19,7 @@ class User(Base):
     surname: orm.Mapped[str] = orm.mapped_column(sql.String, nullable=False, default="Surname")
 
     username: orm.Mapped[str] = orm.mapped_column(sql.String, nullable=False, unique=True)
-    password_hash: orm.Mappeed[str] = orm.mapped_column(sql.String, nullable=False)
+    password_hash: orm.Mapped[str] = orm.mapped_column(sql.String, nullable=False)
 
     is_admin: orm.Mapped[bool] = orm.mapped_column(sql.Boolean, default=False)
 
@@ -35,3 +35,5 @@ class User(Base):
     def check_password(self, for_check: str) -> bool:
         fchhex = self._get_hex_of_value(for_check)
         return fchhex == self.password_hash
+
+Meta.create_all(engine)

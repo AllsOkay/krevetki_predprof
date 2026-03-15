@@ -1,0 +1,263 @@
+<!-- frontend/admin.html -->
+<!-- Панель администратора: создание пользователей, управление -->
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦐 Alien Classifier | Админ-панель</title>
+    
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <!-- Навигация -->
+    <nav class="navbar">
+        <a href="/admin" class="nav-brand">Alien Classifier <span style="font-size: 0.8em;">👑 Admin</span></a>
+        <div class="nav-links">
+            <a href="/dashboard" class="nav-link">📊 Пользовательская панель</a>
+            <span id="adminName" class="nav-link">👤 Загрузка...</span>
+            <a href="#" id="logoutBtn" class="nav-link">🚪 Выход</a>
+        </div>
+    </nav>
+    
+    <main class="container">
+        <!-- Заголовок -->
+        <div class="card animate-fade-in">
+            <h2>👑 Панель администратора</h2>
+            <p style="color: var(--text-secondary);">
+                Управление пользователями системы классификации сигналов
+            </p>
+        </div>
+        
+        <!-- Форма создания пользователя -->
+        <div class="card animate-fade-in" style="animation-delay: 0.1s;">
+            <h3>➕ Создать нового пользователя</h3>
+            <p style="margin-bottom: 16px; color: var(--text-secondary);">
+                Обязательные поля: Имя и Фамилия (согласно техническому заданию)
+            </p>
+            
+            <form id="createUserForm">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                    <div class="form-group">
+                        <label for="newUsername">
+                            <i class="fas fa-at"></i> Логин *
+                        </label>
+                        <input 
+                            type="text" 
+                            id="newUsername" 
+                            name="username" 
+                            placeholder="unique_login"
+                            required
+                            pattern="[a-zA-Z0-9_]+"
+                            title="Только буквы, цифры и подчёркивание"
+                        >
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="newPassword">
+                            <i class="fas fa-key"></i> Пароль *
+                        </label>
+                        <input 
+                            type="password" 
+                            id="newPassword" 
+                            name="password" 
+                            placeholder="Минимум 8 символов"
+                            required
+                            minlength="8"
+                        >
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="newName">
+                            <i class="fas fa-user"></i> Имя *
+                        </label>
+                        <input 
+                            type="text" 
+                            id="newName" 
+                            name="name" 
+                            placeholder="Иван"
+                            required
+                        >
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="newSurname">
+                            <i class="fas fa-user"></i> Фамилия *
+                        </label>
+                        <input 
+                            type="text" 
+                            id="newSurname" 
+                            name="surname" 
+                            placeholder="Иванов"
+                            required
+                        >
+                    </div>
+                </div>
+                
+                <!-- Сообщение о результате -->
+                <div id="createUserMessage" class="hidden" style="margin: 16px 0;">
+                    <!-- Динамический контент -->
+                </div>
+                
+                <button type="submit" class="btn">
+                    <i class="fas fa-user-plus"></i> Создать пользователя
+                </button>
+            </form>
+        </div>
+        
+        <!-- Список пользователей -->
+        <div class="card animate-fade-in" style="animation-delay: 0.2s;">
+            <h3>👥 Зарегистрированные пользователи</h3>
+            
+            <div id="usersList" style="margin-top: 16px;">
+                <!-- Таблица пользователей будет сгенерирована JavaScript -->
+                <div class="status-badge status-warning">⏳ Загрузка списка...</div>
+            </div>
+        </div>
+        
+        <!-- Системная информация -->
+        <div class="card animate-fade-in" style="animation-delay: 0.3s;">
+            <h3>⚙️ Системная информация</h3>
+            <div id="systemInfo" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px;">
+                <div><strong>Статус сервера:</strong> <span id="serverStatus">Проверка...</span></div>
+                <div><strong>База данных:</strong> <span id="dbStatus">Проверка...</span></div>
+                <div><strong>Модель:</strong> <span id="adminModelStatus">Загрузка...</span></div>
+                <div><strong>Активных сессий:</strong> <span id="activeSessions">-</span></div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Скрипты -->
+    <script src="/js/auth.js"></script>
+    <script src="/js/main.js"></script>
+    <script>
+        // Админ-специфичная инициализация
+        document.addEventListener('DOMContentLoaded', function() {
+            // Проверка прав администратора
+            if (!window.currentUser || window.currentUser.role !== 'admin') {
+                window.location.href = '/dashboard';
+                return;
+            }
+            
+            // Загрузка списка пользователей
+            loadUsersList();
+            
+            // Обработчик формы создания
+            document.getElementById('createUserForm').addEventListener('submit', handleCreateUser);
+        });
+        
+        async function loadUsersList() {
+            try {
+                const response = await fetch('/api/users', {
+                    headers: { 'Authorization': `Bearer ${window.currentUser?.token}` }
+                });
+                
+                if (!response.ok) throw new Error('Не удалось загрузить пользователей');
+                
+                const users = await response.json();
+                renderUsersTable(users);
+                
+            } catch (error) {
+                document.getElementById('usersList').innerHTML = 
+                    `<div class="status-badge status-error">❌ Ошибка: ${error.message}</div>`;
+            }
+        }
+        
+        function renderUsersTable(users) {
+            const container = document.getElementById('usersList');
+            
+            if (users.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-secondary);">Пользователи не найдены</p>';
+                return;
+            }
+            
+            let html = `
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: var(--shrimp-light);">
+                            <th style="padding: 12px; text-align: left;">Логин</th>
+                            <th style="padding: 12px; text-align: left;">Имя</th>
+                            <th style="padding: 12px; text-align: left;">Фамилия</th>
+                            <th style="padding: 12px; text-align: left;">Роль</th>
+                            <th style="padding: 12px; text-align: left;">Создан</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            for (const user of users) {
+                const roleBadge = user.role === 'admin' 
+                    ? '<span class="status-badge status-error">👑 Админ</span>'
+                    : '<span class="status-badge status-success">👤 Пользователь</span>';
+                
+                html += `
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 12px;"><code>${user.username}</code></td>
+                        <td style="padding: 12px;">${user.name}</td>
+                        <td style="padding: 12px;">${user.surname}</td>
+                        <td style="padding: 12px;">${roleBadge}</td>
+                        <td style="padding: 12px; color: var(--text-secondary);">${new Date(user.created_at).toLocaleDateString('ru-RU')}</td>
+                    </tr>
+                `;
+            }
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        
+        async function handleCreateUser(event) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const messageDiv = document.getElementById('createUserMessage');
+            const submitBtn = form.querySelector('button[type="submit"]');
+            
+            // Блокируем кнопку во время запроса
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Создание...';
+            
+            try {
+                const formData = {
+                    token: window.currentUser?.token,
+                    username: form.username.value,
+                    password: form.password.value,
+                    name: form.name.value,
+                    surname: form.surname.value
+                };
+                
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${formData.token}`
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    messageDiv.className = 'status-badge status-success';
+                    messageDiv.textContent = `✅ Пользователь ${formData.username} успешно создан!`;
+                    form.reset();
+                    // Обновляем список
+                    loadUsersList();
+                } else {
+                    messageDiv.className = 'status-badge status-error';
+                    messageDiv.textContent = `❌ Ошибка: ${result.error || 'Неизвестная ошибка'}`;
+                }
+                
+            } catch (error) {
+                messageDiv.className = 'status-badge status-error';
+                messageDiv.textContent = `❌ Ошибка сети: ${error.message}`;
+                
+            } finally {
+                messageDiv.classList.remove('hidden');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> Создать пользователя';
+            }
+        }
+    </script>
+</body>
+</html>

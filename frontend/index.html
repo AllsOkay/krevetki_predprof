@@ -1,0 +1,114 @@
+<!-- frontend/index.html -->
+<!-- Страница авторизации / главная страница -->
+<!-- Чистый HTML + JavaScript, без шаблонизаторов -->
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦐 Alien Signal Classifier | Вход</title>
+    
+    <!-- Подключаем креветочные стили -->
+    <link rel="stylesheet" href="/css/style.css">
+    
+    <!-- Иконки (опционально, можно заменить на emoji) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Навигация (упрощённая для страницы входа) -->
+    <nav class="navbar">
+        <a href="/" class="nav-brand">Alien Classifier</a>
+        <div class="nav-links">
+            <span class="status-badge status-success">🟢 Система активна</span>
+        </div>
+    </nav>
+    
+    <!-- Основной контент -->
+    <main class="container">
+        <!-- Карточка входа -->
+        <div class="card animate-fade-in" style="max-width: 500px; margin: 60px auto;">
+            <h1 class="text-center">🛸 Вход в систему</h1>
+            <p class="text-center" style="color: var(--text-secondary); margin-bottom: 24px;">
+                Классификация инопланетных радиосигналов
+            </p>
+            
+            <!-- Форма авторизации -->
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">
+                        <i class="fas fa-user"></i> Логин
+                    </label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        placeholder="Введите ваш логин"
+                        required
+                        autocomplete="username"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">
+                        <i class="fas fa-lock"></i> Пароль
+                    </label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        placeholder="Введите ваш пароль"
+                        required
+                        autocomplete="current-password"
+                    >
+                </div>
+                
+                <!-- Сообщение об ошибке (скрыто по умолчанию) -->
+                <div id="loginError" class="status-badge status-error hidden" style="margin-bottom: 16px;">
+                    <!-- Ошибка будет вставлена здесь -->
+                </div>
+                
+                <!-- Кнопка входа -->
+                <button type="submit" class="btn" style="width: 100%;">
+                    <i class="fas fa-sign-in-alt"></i> Войти в систему
+                </button>
+            </form>
+            
+            <!-- Информация для демо -->
+            <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #eee;">
+                <p style="font-size: 0.9rem; color: var(--text-secondary);">
+                    <strong>Демо-доступ:</strong><br>
+                    👨‍💼 Администратор: <code>admin</code> / <code>admin123</code><br>
+                    👤 Пользователь: <code>user</code> / <code>user123</code>
+                </p>
+            </div>
+        </div>
+        
+        <!-- Информация о проекте -->
+        <div class="card animate-fade-in" style="animation-delay: 0.2s;">
+            <h2>📡 О проекте</h2>
+            <p>
+                Эта система использует искусственный интеллект для классификации 
+                радиосигналов от различных инопланетных цивилизаций. 
+                Нейронная сеть обучена на 1600 записях сигналов и способна 
+                определять отправителя с высокой точностью.
+            </p>
+            <ul style="margin: 16px 0 16px 24px;">
+                <li>🧠 Кастомная нейросеть, реализованная с нуля</li>
+                <li>🔐 Двухуровневая система авторизации</li>
+                <li>📊 Интерактивная аналитика и визуализация</li>
+                <li>☁️ Поддержка Yandex DataSphere для масштабирования</li>
+            </ul>
+        </div>
+    </main>
+    
+    <!-- Футер -->
+    <footer style="text-align: center; padding: 20px; color: var(--text-secondary);">
+        <p>🦐 Alien Signal Classifier v1.0 | МПОШ 2226</p>
+    </footer>
+    
+    <!-- Подключаем JavaScript модули -->
+    <script src="/js/auth.js"></script>
+    <script src="/js/main.js"></script>
+</body>
+</html>
